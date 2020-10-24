@@ -2,7 +2,7 @@ settings
 {
 	main
 	{
-		Description: "Sleep 'N Yeet! By: Block#12425. Version: 1.3.0. Use Workshop Settings to change the game! Additional language support: Simplified CN."
+		Description: "Sleep 'N Yeet! By: Block#12425. Version: 1.3.1. Use Workshop Settings to change the game! Additional language support: Simplified CN."
 	}
 	lobby
 	{
@@ -118,11 +118,11 @@ rule ("Constant Strings") {
     }
     actions {
         Set Global Variable(stringCreator, Custom String("Block#12425", Null, Null, Null));
-        Set Global Variable(stringVersion, Custom String("1.3.0", Null, Null, Null));
+        Set Global Variable(stringVersion, Custom String("1.3.1", Null, Null, Null));
         Set Global Variable(stringDiscordLink, Custom String("discord.gg/CSKSVDH", Null, Null, Null));
         Set Global Variable(stringProjectLink, Custom String("workshop.codes/sleepyeet", Null, Null, Null));
         Set Global Variable(stringCode, Custom String("Code: QKTTV", Null, Null, Null));
-        Set Global Variable(stringGHLink, Custom String("grandeurhammers.com", Null, Null, Null));
+        Set Global Variable(stringGHLink, Custom String("grandeurhammers.com/discord", Null, Null, Null));
     }
 }
 
