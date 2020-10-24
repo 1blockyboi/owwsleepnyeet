@@ -26,11 +26,11 @@ subroutine simplifiedChineseStrings
 #These strings are the same no matter the language.
 rule "Constant Strings":
     stringCreator = "Block#12425"
-    stringVersion = "1.3.0"
+    stringVersion = "1.3.1"
     stringDiscordLink = "discord.gg/CSKSVDH"
     stringProjectLink = "workshop.codes/sleepyeet"
     stringCode = "Code: QKTTV"
-    stringGHLink = "grandeurhammers.com"
+    stringGHLink = "grandeurhammers.com/discord"
 
 #Language is determined by the host player's language. If the player's language is not support, it defaults to English.
 def languageDetection():
