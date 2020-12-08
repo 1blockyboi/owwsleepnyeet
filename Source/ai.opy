@@ -87,7 +87,9 @@ rule "Roam":
         eventPlayer.stopThrottleInDirection()
     
     if random.randint(0, 5) <= 3 and willJump == true:
-        eventPlayer.forceButtonPress(Button.JUMP)
+        eventPlayer.startForcingButton(Button.JUMP)
+        wait()
+        eventPlayer.stopForcingButton(Button.JUMP)
     wait(0.7, Wait.ABORT_WHEN_FALSE)
     if RULE_CONDITION:
         goto RULE_START
@@ -118,7 +120,9 @@ rule "Shoot sleep":
     @Condition willAttackPlayers == true
     
     if (random.randint(0,1) == 1):
-        eventPlayer.forceButtonPress(Button.ABILITY_1)
+        eventPlayer.startForcingButton(Button.ABILITY_1)
+        wait()
+        eventPlayer.stopForcingButton(Button.ABILITY_1)
     wait(1)
     if RULE_CONDITION:
         goto RULE_START
@@ -148,7 +152,9 @@ rule "Launch Player":
     @Condition len(eventPlayer.playerCarried) > 0
     @Condition willAttackPlayers == true
     
-    eventPlayer.forceButtonPress(Button.SECONDARY_FIRE)
+    eventPlayer.startForcingButton(Button.SECONDARY_FIRE)
+    wait()
+    eventPlayer.stopForcingButton(Button.SECONDARY_FIRE)
     eventPlayer.communicate(Comms.GOODBYE)
 
 #Chasing State: Pick up slept player.
@@ -175,7 +181,9 @@ rule "Pick Up Player":
         wait(0.1)
         eventPlayer.stopForcingButton(Button.CROUCH)
         wait(0.1)
-    eventPlayer.forceButtonPress(Button.PRIMARY_FIRE)
+    eventPlayer.startForcingButton(Button.PRIMARY_FIRE)
+    wait()
+    eventPlayer.stopForcingButton(Button.PRIMARY_FIRE)
     wait(0.25)
     if RULE_CONDITION:
         goto RULE_START
@@ -246,7 +254,9 @@ rule "Ultimate usage":
     @Condition eventPlayer.hasSpawned() == true
     @Condition willUlt == true
     
-    eventPlayer.forceButtonPress(Button.ULTIMATE)
+    eventPlayer.startForcingButton(Button.ULTIMATE)
+    wait()
+    eventPlayer.stopForcingButton(Button.ULTIMATE)
 
 #Chasing State: If in Target Roam state, convert to chasing state, and run away from edge. Afterwards, revert to Target Roam State, even if it initially was in chasing state.
 rule "Retreat from map edge":
@@ -307,4 +317,6 @@ rule "Pick up players while going to edge":
     @Condition entityExists(eventPlayer.targetedPlayer) == false
     @Condition willAttackPlayers == true
     
-    eventPlayer.forceButtonPress(Button.PRIMARY_FIRE)
+    eventPlayer.startForcingButton(Button.PRIMARY_FIRE)
+    wait()
+    eventPlayer.stopForcingButton(Button.PRIMARY_FIRE)

@@ -195,7 +195,9 @@ rule "Slept for too long":
 def autoEscape():
     @Name "Auto Escape Subroutine"
     
-    eventPlayer.forceButtonPress(Button.JUMP)
+    eventPlayer.startForcingButton(Button.JUMP)
+    wait()
+    eventPlayer.stopForcingButton(Button.JUMP)
 
 #If auto escape is turned on, the jump button is automatically pressed when the player is eligible for escape.
 rule "Auto Escape":
