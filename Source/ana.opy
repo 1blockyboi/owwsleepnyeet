@@ -16,6 +16,9 @@ playervar playerCarried
 playervar thrower
 playervar i
 playervar j
+playervar ready
+playervar scoreTime
+playervar score
 
 subroutine autoEscape
 
@@ -32,6 +35,8 @@ rule "New Player Setup":
     eventPlayer.startModifyingVoicelinePitch(((scale-100)/(-180))+1,false)
     eventPlayer.setMoveSpeed(moveSpeed)
     eventPlayer.setJumpVerticalSpeed(jumpSpeed)
+    eventPlayer.scoreTime = getMatchTime()
+    eventPlayer.score = 0
 
 #Create Workshop settings for Ana settings.
 rule "Ana Initial Setup":
@@ -44,6 +49,8 @@ rule "Ana Initial Setup":
     moveSpeed = createWorkshopSetting(float<10:500>, "General", "Move Speed Percentage of Ana (Default: 100%)", 100)
     sleepCD = createWorkshopSetting(float<0:20>, "General", "Sleep Dart Cooldown in Seconds (Default: 2)", 2)
     jumpSpeed = createWorkshopSetting(float<0:500>, "General", "Jump Speed Percentage (Default: 100%)", 100)
+
+
 
 #Picks up a sleeping player. Player will be appended to the playerCarried array, and attached.
 rule "Pickup player":
@@ -131,9 +138,11 @@ rule "Escape from grasp":
 rule "Too Far Gone kill credit":
     @Event eachPlayer
     @Hero all
-    @Condition eventPlayer.getPosition().y < -5
+    @Condition eventPlayer.getPosition().y < (41 if getCurrentMap() == Map.WORKSHOP_CHAMBER else -5)
+    @Condition eventPlayer.ready
     
     kill(eventPlayer, eventPlayer.thrower)
+    eventPlayer.ready = false
     eventPlayer.thrower.setUltCharge(eventPlayer.thrower.getUltCharge() + ultPercentage)
     wait(0.25)
     eventPlayer.playerCarried = []
@@ -167,7 +176,7 @@ rule "Ult Cancels Sleep":
     wait(0.8)
     eventPlayer.forceButtonPress(Button.ULTIMATE)
     wait(1.2)
-    if eventPlayer.getUltCharge() > 0:
+    if eventPlayer.getUltCharge() > 0 and eventPlayer.isUsingUltimate() == false:
         eventPlayer.setUltCharge(0)
 
 #If the player is slept for too long, the player is respawned.
@@ -189,7 +198,11 @@ rule "Slept for too long":
     wait(1, Wait.ABORT_WHEN_FALSE)
     wait(1, Wait.ABORT_WHEN_FALSE)
     wait(1, Wait.ABORT_WHEN_FALSE)
-    eventPlayer.respawn()
+    wait(1, Wait.ABORT_WHEN_FALSE)
+    wait(1, Wait.ABORT_WHEN_FALSE)
+    wait(1, Wait.ABORT_WHEN_FALSE)
+    eventPlayer.setStatusEffect(null, Status.PHASED_OUT, 5)
+    eventPlayer.clearStatusEffect(Status.ASLEEP)
 
 #autoEscape Subroutine: press jump button.
 def autoEscape():
@@ -235,3 +248,11 @@ rule "Sleep Dart Manual CD":
     @Condition eventPlayer.getAbilityCooldown(Button.ABILITY_1) > 0
 
     eventPlayer.setAbilityCooldown(Button.ABILITY_1, sleepCD)
+
+#When the player's score changes, the match time is rerecorded. This is to ensure that the scores with the oldest time still take priority with leader status.
+rule "Record new match time after score change":
+    @Event eachPlayer
+    @Condition eventPlayer.score != eventPlayer.getScore()
+
+    eventPlayer.scoreTime = getMatchTime()
+    eventPlayer.score = eventPlayer.getScore()

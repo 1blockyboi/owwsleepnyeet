@@ -26,9 +26,9 @@ subroutine simplifiedChineseStrings
 #These strings are the same no matter the language.
 rule "Constant Strings":
     stringCreator = "Block#12425"
-    stringVersion = "1.3.2"
+    stringVersion = "1.4.0"
     stringDiscordLink = "discord.gg/CSKSVDH"
-    stringProjectLink = "workshop.codes/sleepyeet"
+    stringProjectLink = "workshop.codes/QKTTV"
     stringCode = "Code: QKTTV"
     stringGHLink = "grandeurhammers.com/discord"
 
@@ -54,12 +54,12 @@ def englishStrings():
     stringPick = "Picked up"
     stringEscape = ": To escape her grasp!"
     stringDiscord = "Join the discord: {0} (All caps)".format(stringDiscordLink)
-    stringProject = "Project: {0} (All lowercase)".format(stringProjectLink)
+    stringProject = "Project: {0}".format(stringProjectLink)
     stringUltEscape = ": To gain a speed boost and wake up if asleep!"
     stringTranslation = ""
     stringGraspEscape = " escaped!"
     stringTitle = "Sleep 'N Yeet"
-    stringAnaBotSpawn = "{0} Ana bots Enabled. Current count:".format(abilityIconString(Hero.TORBJORN, Button.ABILITY_2))
+    stringAnaBotSpawn = "{0} Bots Enabled. Current count:".format(abilityIconString(Hero.ECHO, Button.ULTIMATE))
     stringGH = "{0} Certified by Grandeur Hammers".format(abilityIconString(Hero.TORBJORN, Button.ABILITY_2))
 
 #Simplified Chinese Strings

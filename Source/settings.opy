@@ -2,7 +2,7 @@
 
 settings {
     "main": {
-        "description": "Sleep 'N Yeet! By: Block#12425. Version: 1.3.2. Use Workshop Settings to change the game! Additional language support: Simplified CN."
+        "description": "Sleep 'N Yeet! By: Block#12425. Version: 1.4.0. Use Workshop Settings to change the game! Additional language support: Simplified CN."
     },
     "lobby": {
         "allowPlayersInQueue": true,
@@ -14,14 +14,15 @@ settings {
         "ffa": {
             "enabledMaps": [
                 "workshopIsland",
-                "workshopIslandNight"
+                "workshopIslandNight",
+                "workshopChamber"
             ]
         },
         "general": {
             "enableHeroSwitching": false,
             "gamemodeStartTrigger": "immediately",
             "heroLimit": "off",
-            "respawnTime%": 20
+            "respawnTime%": 20,
         }
     },
     "heroes": {

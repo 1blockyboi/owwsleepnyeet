@@ -2,7 +2,7 @@ settings
 {
 	main
 	{
-		Description: "Sleep 'N Yeet! By: Block#12425. Version: 1.3.2. Use Workshop Settings to change the game! Additional language support: Simplified CN."
+		Description: "Sleep 'N Yeet! By: Block#12425. Version: 1.4.0. Use Workshop Settings to change the game! Additional language support: Simplified CN."
 	}
 	lobby
 	{
@@ -19,6 +19,7 @@ settings
 			{
 				Workshop Island
 				Workshop Island Night
+				Workshop Chamber
 			}
 		}
 		General
@@ -93,14 +94,24 @@ variables {
         36: willRoam
         37: willUlt
         38: isDebug
+        39: leader
+        40: leaderArray
+        41: titleColorR
+        42: titleColorG
+        43: titleColorB
+        44: y
+        45: spawnPositionArray
     player:
         0: playerCarried
         1: thrower
         2: i
         3: j
-        4: targetedPlayer
-        5: isChasing
-        6: aimInaccuracy
+        4: ready
+        5: scoreTime
+        6: score
+        7: targetedPlayer
+        8: isChasing
+        9: aimInaccuracy
 }
 subroutines {
     0: languageDetection
@@ -118,9 +129,9 @@ rule ("Constant Strings") {
     }
     actions {
         Set Global Variable(stringCreator, Custom String("Block#12425", Null, Null, Null));
-        Set Global Variable(stringVersion, Custom String("1.3.2", Null, Null, Null));
+        Set Global Variable(stringVersion, Custom String("1.4.0", Null, Null, Null));
         Set Global Variable(stringDiscordLink, Custom String("discord.gg/CSKSVDH", Null, Null, Null));
-        Set Global Variable(stringProjectLink, Custom String("workshop.codes/sleepyeet", Null, Null, Null));
+        Set Global Variable(stringProjectLink, Custom String("workshop.codes/QKTTV", Null, Null, Null));
         Set Global Variable(stringCode, Custom String("Code: QKTTV", Null, Null, Null));
         Set Global Variable(stringGHLink, Custom String("grandeurhammers.com/discord", Null, Null, Null));
     }
@@ -154,12 +165,12 @@ rule ("English") {
         Set Global Variable(stringPick, Custom String("Picked up", Null, Null, Null));
         Set Global Variable(stringEscape, Custom String(": To escape her grasp!", Null, Null, Null));
         Set Global Variable(stringDiscord, Custom String("Join the discord: {0} (All caps)", Global.stringDiscordLink, Null, Null));
-        Set Global Variable(stringProject, Custom String("Project: {0} (All lowercase)", Global.stringProjectLink, Null, Null));
+        Set Global Variable(stringProject, Custom String("Project: {0}", Global.stringProjectLink, Null, Null));
         Set Global Variable(stringUltEscape, Custom String(": To gain a speed boost and wake up if asleep!", Null, Null, Null));
         Set Global Variable(stringTranslation, Custom String("", Null, Null, Null));
         Set Global Variable(stringGraspEscape, Custom String(" escaped!", Null, Null, Null));
         Set Global Variable(stringTitle, Custom String("Sleep 'N Yeet", Null, Null, Null));
-        Set Global Variable(stringAnaBotSpawn, Custom String("{0} Ana bots Enabled. Current count:", Ability Icon String(Hero(Torbjörn), Button(Ability 2)), Null, Null));
+        Set Global Variable(stringAnaBotSpawn, Custom String("{0} Bots Enabled. Current count:", Ability Icon String(Hero(Echo), Button(Ultimate)), Null, Null));
         Set Global Variable(stringGH, Custom String("{0} Certified by Grandeur Hammers", Ability Icon String(Hero(Torbjörn), Button(Ability 2)), Null, Null));
     }
 }
@@ -204,6 +215,8 @@ rule ("New Player Setup") {
         Start Modifying Hero Voice Lines(Event Player, Add(Divide(Subtract(Global.scale, 100), -180), 1), False);
         Set Move Speed(Event Player, Global.moveSpeed);
         Set Jump Vertical Speed(Event Player, Global.jumpSpeed);
+        Set Player Variable(Event Player, scoreTime, Match Time);
+        Set Player Variable(Event Player, score, 0);
     }
 }
 
@@ -352,10 +365,12 @@ rule ("Too Far Gone kill credit") {
         All;
     }
     conditions {
-        Y Component Of(Position Of(Event Player)) < -5;
+        Y Component Of(Position Of(Event Player)) < If-Then-Else(Compare(Current Map, ==, Map(Workshop Chamber)), 41, -5);
+        (Event Player).ready != False;
     }
     actions {
         Kill(Event Player, (Event Player).thrower);
+        Set Player Variable(Event Player, ready, False);
         Set Ultimate Charge((Event Player).thrower, Add(Ultimate Charge Percent((Event Player).thrower), Global.ultPercentage));
         Wait(0.25, Ignore Condition);
         Set Player Variable(Event Player, playerCarried, Empty Array);
@@ -407,7 +422,7 @@ rule ("Ult Cancels Sleep") {
         Wait(0.8, Ignore Condition);
         Press Button(Event Player, Button(Ultimate));
         Wait(1.2, Ignore Condition);
-        If(Compare(Ultimate Charge Percent(Event Player), >, 0));
+        If(And(Compare(Ultimate Charge Percent(Event Player), >, 0), Not(Is Using Ultimate(Event Player))));
             Set Ultimate Charge(Event Player, 0);
     }
 }
@@ -435,7 +450,11 @@ rule ("Slept for too long") {
         Wait(1, Abort When False);
         Wait(1, Abort When False);
         Wait(1, Abort When False);
-        Respawn(Event Player);
+        Wait(1, Abort When False);
+        Wait(1, Abort When False);
+        Wait(1, Abort When False);
+        Set Status(Event Player, Null, Phased Out, 5);
+        Clear Status(Event Player, Asleep);
     }
 }
 
@@ -514,6 +533,21 @@ rule ("Sleep Dart Manual CD") {
     }
 }
 
+rule ("Record new match time after score change") {
+    event {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+    conditions {
+        (Event Player).score != Score Of(Event Player);
+    }
+    actions {
+        Set Player Variable(Event Player, scoreTime, Match Time);
+        Set Player Variable(Event Player, score, Score Of(Event Player));
+    }
+}
+
 rule ("Initial Setup") {
     event {
         Ongoing - Global;
@@ -523,7 +557,7 @@ rule ("Initial Setup") {
         Set Global Variable(aiNumber, Workshop Setting Integer(Custom String("Bots", Null, Null, Null), Custom String("Number of minimum required bots/players", Null, Null, Null), 8, 0, 10, 0));
         Set Global Variable(aimInaccuracyExtremes, Workshop Setting Real(Custom String("Bots", Null, Null, Null), Custom String("Range of Aim Error", Null, Null, Null), 2, 0, 10, 0));
         "This array is used by the bots to find different spots on the map"
-        Set Global Variable(positionArray, Array(Vector(25, 0, 0), Vector(25, 0, 12.5), Vector(25, 0, -12.5), Vector(-25, 0, 0), Vector(-25, 0, 12.5), Vector(-25, 0, -12.5), Vector(0, 0, 25), Vector(12.5, 0, 25), Vector(-12.5, 0, 25), Vector(0, 0, -25), Vector(12.5, 0, -25), Vector(-12.5, 0, -25)));
+        Set Global Variable(positionArray, If-Then-Else(Compare(Current Map, ==, Map(Workshop Chamber)), Array(Vector(27, 46, 0), Vector(27, 46, 13.5), Vector(27, 46, -13.5), Vector(-27, 46, 0), Vector(-27, 0, 13.5), Vector(-27, 46, -13.5), Vector(0, 46, 27), Vector(13.5, 46, 27), Vector(-27, 46, 27), Vector(0, 46, -27), Vector(13.5, 46, -27), Vector(-13.5, 46, -27)), Array(Vector(25, 0, 0), Vector(25, 0, 12.5), Vector(25, 0, -12.5), Vector(-25, 0, 0), Vector(-25, 0, 12.5), Vector(-25, 0, -12.5), Vector(0, 0, 25), Vector(12.5, 0, 25), Vector(-25, 0, 25), Vector(0, 0, -25), Vector(12.5, 0, -25), Vector(-12.5, 0, -25))));
         Set Global Variable(willAttackPlayers, Workshop Setting Toggle(Custom String("Bots", Null, Null, Null), Custom String("Attack players (shoot sleep dart, chase, and yeet)", Null, Null, Null), True, 0));
         Set Global Variable(willEscape, Workshop Setting Toggle(Custom String("Bots", Null, Null, Null), Custom String("Bots will attempt to escape", Null, Null, Null), True, 0));
         Set Global Variable(willJump, Workshop Setting Toggle(Custom String("Bots", Null, Null, Null), Custom String("Bots will jump", Null, Null, Null), True, 0));
@@ -725,7 +759,6 @@ rule ("Pick Up Player") {
     }
     actions {
         Stop Forcing Throttle(Event Player);
-        "Easter Egg: Bot randomly teabags opponents."
         If(Compare(Random Real(0, 1), >, 0.7));
             Wait(0.25, Ignore Condition);
             Stop Throttle In Direction(Event Player);
@@ -942,9 +975,37 @@ rule ("Initial Setup") {
     }
     actions {
         Set Global Variable(isDebug, Workshop Setting Toggle(Custom String("Debug", Null, Null, Null), Custom String("Enable Debug HUD", Null, Null, Null), False, 0));
+        Set Global Variable(leader, Null);
+        Set Global Variable(titleColorR, 255);
+        Set Global Variable(titleColorG, 0);
+        Set Global Variable(titleColorB, 0);
+        If(Compare(Current Map, ==, Map(Workshop Chamber)));
+            Set Global Variable(y, 46);
+        Else;
+            Set Global Variable(y, 0);
+        End;
+        Set Global Variable(spawnPositionArray, Array(Vector(15, Global.y, 15), Vector(10, Global.y, 15), Vector(5, Global.y, 15), Vector(0, Global.y, 15), Vector(-5, Global.y, 15), Vector(-10, Global.y, 15), Vector(-15, Global.y, 15), Vector(15, Global.y, 10), Vector(15, Global.y, 5), Vector(15, Global.y, 0), Vector(15, Global.y, -5), Vector(15, Global.y, -10), Vector(15, Global.y, -15), Vector(10, Global.y, -15), Vector(5, Global.y, -15), Vector(0, Global.y, -15), Vector(-5, Global.y, -15), Vector(-10, Global.y, -15), Vector(-15, Global.y, -15), Vector(-15, Global.y, 10), Vector(-15, Global.y, 5), Vector(-15, Global.y, 0), Vector(-15, Global.y, -5), Vector(-15, Global.y, -10)));
         Call Subroutine(hudCreation);
         Call Subroutine(languageDetection);
         Call Subroutine(ringCreation);
+        If(Compare(Current Map, ==, Map(Workshop Chamber)));
+            Create Beam Effect(All Players(All Teams), Grapple Beam, Vector(21, 46, 21), Vector(24.495, 101, 24.495), Color(White), Visible To);
+            Create Beam Effect(All Players(All Teams), Grapple Beam, Vector(21, 46, -21), Vector(24.495, 101, -24.495), Color(White), Visible To);
+            Create Beam Effect(All Players(All Teams), Grapple Beam, Vector(-21, 46, 21), Vector(-24.495, 101, 24.495), Color(White), Visible To);
+            Create Beam Effect(All Players(All Teams), Grapple Beam, Vector(-21, 46, -21), Vector(-24.495, 101, -24.495), Color(White), Visible To);
+            Create Effect(All Players(All Teams), Sphere, Color(Purple), Vector(0, 120, 0), 40, Visible To);
+            Create Effect(All Players(All Teams), Sphere, Color(Purple), Vector(0, 120, 0), 40, Visible To);
+            Create Effect(All Players(All Teams), Sphere, Color(Purple), Vector(0, 120, 0), 40, Visible To);
+            Create Effect(All Players(All Teams), Sphere, Color(Purple), Vector(0, 120, 0), 40, Visible To);
+            Create Effect(All Players(All Teams), Sphere, Color(Purple), Vector(0, 120, 0), 40, Visible To);
+            Create Effect(All Players(All Teams), Sphere, Color(Purple), Vector(0, 120, 0), 40, Visible To);
+            Create Effect(All Players(All Teams), Sphere, Color(Purple), Vector(0, 120, 0), 40, Visible To);
+            Create Effect(All Players(All Teams), Sphere, Color(Purple), Vector(0, 120, 0), 40, Visible To);
+            Create Effect(All Players(All Teams), Sphere, Color(Purple), Vector(0, 120, 0), 40, Visible To);
+            Create Effect(All Players(All Teams), Sphere, Color(Purple), Vector(0, 120, 0), 40, Visible To);
+        Else If(Compare(Current Map, ==, Map(Workshop Island Night)));
+            Create Effect(All Players(All Teams), Cloud, Color(White), Vector(0, -1, 0), 20, Visible To);
+        End;
         If(Compare(Global.isDebug, ==, True));
             Call Subroutine(debug);
         Else;
@@ -976,9 +1037,8 @@ rule ("HUD Creation Subroutine") {
         hudCreation;
     }
     actions {
-        Create HUD Text(All Players(All Teams), Null, Null, Global.stringDiscord, Right, -1, Null, Null, Color(Green), Visible To and String, Default Visibility);
         Create HUD Text(All Players(All Teams), Null, Null, Global.stringProject, Right, -0.99, Null, Null, Color(Green), Visible To and String, Default Visibility);
-        Create HUD Text(All Players(All Teams), Null, Null, Global.stringCode, Right, -0.9, Null, Null, Color(Aqua), Visible To and String, Default Visibility);
+        Create HUD Text(All Players(All Teams), Null, Null, Global.stringCode, Right, -0.9, Null, Null, Custom Color(Global.titleColorR, Global.titleColorG, Global.titleColorB, 255), Visible To String and Color, Default Visibility);
         Create HUD Text(All Players(All Teams), Null, Null, Custom String(" \n{0}", Global.stringGH, Null, Null), Right, -0.89, Null, Null, Color(Yellow), Visible To and String, Default Visibility);
         Create HUD Text(All Players(All Teams), Null, Global.stringTranslation, Null, Right, -2, Null, Color(White), Null, Visible To and String, Default Visibility);
         Create HUD Text(All Players(All Teams), Null, Null, Global.stringGHLink, Right, -0.88, Null, Null, Color(Yellow), Visible To and String, Default Visibility);
@@ -997,22 +1057,21 @@ rule ("Other Effect Creation") {
         ringCreation;
     }
     actions {
-        Create Effect(If-Then-Else(And(Has Status(Players In Slot(0, All Teams), Asleep), Compare((Players In Slot(0, All Teams)).thrower, ==, Null)), All Players(All Teams), Empty Array), Ring, Color(Red), Position Of(Players In Slot(0, All Teams)), Global.pickupRadius, Visible To Position and Radius);
-        Create Effect(If-Then-Else(And(Has Status(Players In Slot(1, All Teams), Asleep), Compare((Players In Slot(1, All Teams)).thrower, ==, Null)), All Players(All Teams), Empty Array), Ring, Color(Red), Position Of(Players In Slot(1, All Teams)), Global.pickupRadius, Visible To Position and Radius);
-        Create Effect(If-Then-Else(And(Has Status(Players In Slot(2, All Teams), Asleep), Compare((Players In Slot(2, All Teams)).thrower, ==, Null)), All Players(All Teams), Empty Array), Ring, Color(Red), Position Of(Players In Slot(2, All Teams)), Global.pickupRadius, Visible To Position and Radius);
-        Create Effect(If-Then-Else(And(Has Status(Players In Slot(3, All Teams), Asleep), Compare((Players In Slot(3, All Teams)).thrower, ==, Null)), All Players(All Teams), Empty Array), Ring, Color(Red), Position Of(Players In Slot(3, All Teams)), Global.pickupRadius, Visible To Position and Radius);
-        Create Effect(If-Then-Else(And(Has Status(Players In Slot(4, All Teams), Asleep), Compare((Players In Slot(4, All Teams)).thrower, ==, Null)), All Players(All Teams), Empty Array), Ring, Color(Red), Position Of(Players In Slot(4, All Teams)), Global.pickupRadius, Visible To Position and Radius);
-        Create Effect(If-Then-Else(And(Has Status(Players In Slot(5, All Teams), Asleep), Compare((Players In Slot(5, All Teams)).thrower, ==, Null)), All Players(All Teams), Empty Array), Ring, Color(Red), Position Of(Players In Slot(5, All Teams)), Global.pickupRadius, Visible To Position and Radius);
-        Create Effect(If-Then-Else(And(Has Status(Players In Slot(6, All Teams), Asleep), Compare((Players In Slot(6, All Teams)).thrower, ==, Null)), All Players(All Teams), Empty Array), Ring, Color(Red), Position Of(Players In Slot(6, All Teams)), Global.pickupRadius, Visible To Position and Radius);
-        Create Effect(If-Then-Else(And(Has Status(Players In Slot(7, All Teams), Asleep), Compare((Players In Slot(7, All Teams)).thrower, ==, Null)), All Players(All Teams), Empty Array), Ring, Color(Red), Position Of(Players In Slot(7, All Teams)), Global.pickupRadius, Visible To Position and Radius);
-        Create Effect(If-Then-Else(And(Has Status(Players In Slot(8, All Teams), Asleep), Compare((Players In Slot(8, All Teams)).thrower, ==, Null)), All Players(All Teams), Empty Array), Ring, Color(Red), Position Of(Players In Slot(8, All Teams)), Global.pickupRadius, Visible To Position and Radius);
-        Create Effect(If-Then-Else(And(Has Status(Players In Slot(9, All Teams), Asleep), Compare((Players In Slot(9, All Teams)).thrower, ==, Null)), All Players(All Teams), Empty Array), Ring, Color(Red), Position Of(Players In Slot(9, All Teams)), Global.pickupRadius, Visible To Position and Radius);
-        Create Effect(If-Then-Else(And(Has Status(Players In Slot(10, All Teams), Asleep), Compare((Players In Slot(10, All Teams)).thrower, ==, Null)), All Players(All Teams), Empty Array), Ring, Color(Red), Position Of(Players In Slot(10, All Teams)), Global.pickupRadius, Visible To Position and Radius);
-        Create Effect(If-Then-Else(And(Has Status(Players In Slot(11, All Teams), Asleep), Compare((Players In Slot(11, All Teams)).thrower, ==, Null)), All Players(All Teams), Empty Array), Ring, Color(Red), Position Of(Players In Slot(11, All Teams)), Global.pickupRadius, Visible To Position and Radius);
-        Create Effect(Filtered Array(Sorted Array(All Players(All Teams), Multiply(-1, Score Of(Current Array Element))), And(Compare(Number Of Players(All Teams), >, 0), Compare(Current Array Index, !=, 0))), Good Aura, Color(Yellow), First Of(Sorted Array(All Players(All Teams), Multiply(-1, Score Of(Current Array Element)))), Multiply(Divide(Global.scale, 100), 2), Visible To Position and Radius);
-        Create In-World Text(Filtered Array(Sorted Array(All Players(All Teams), Multiply(-1, Score Of(Current Array Element))), And(Compare(Number Of Players(All Teams), >, 0), Compare(Current Array Index, !=, 0))), Custom String("#1", Null, Null, Null), First Of(Sorted Array(All Players(All Teams), Multiply(-1, Score Of(Current Array Element)))), 2.0, Clip Against Surfaces, Visible To and Position, Color(Yellow), Default Visibility);
-        Create In-World Text(All Players(All Teams), Global.stringTitle, Vector(0, 20, 113), 4, Clip Against Surfaces, Visible To Position and String, Color(Yellow), Default Visibility);
-        Create In-World Text(All Players(All Teams), Global.stringSubtitle, Vector(0, 15, 113), 2, Clip Against Surfaces, Visible To and String, Color(White), Default Visibility);
+        Create Effect(If-Then-Else(And(Has Status(Players In Slot(0, All Teams), Asleep), Compare((Players In Slot(0, All Teams)).thrower, ==, Null)), All Players(All Teams), Empty Array), Ring, If-Then-Else(Compare(Players In Slot(0, All Teams), !=, Global.leader), Color(Red), Color(Yellow)), Position Of(Players In Slot(0, All Teams)), Global.pickupRadius, Visible To Position Radius and Color);
+        Create Effect(If-Then-Else(And(Has Status(Players In Slot(1, All Teams), Asleep), Compare((Players In Slot(1, All Teams)).thrower, ==, Null)), All Players(All Teams), Empty Array), Ring, If-Then-Else(Compare(Players In Slot(1, All Teams), !=, Global.leader), Color(Red), Color(Yellow)), Position Of(Players In Slot(1, All Teams)), Global.pickupRadius, Visible To Position Radius and Color);
+        Create Effect(If-Then-Else(And(Has Status(Players In Slot(2, All Teams), Asleep), Compare((Players In Slot(2, All Teams)).thrower, ==, Null)), All Players(All Teams), Empty Array), Ring, If-Then-Else(Compare(Players In Slot(2, All Teams), !=, Global.leader), Color(Red), Color(Yellow)), Position Of(Players In Slot(2, All Teams)), Global.pickupRadius, Visible To Position Radius and Color);
+        Create Effect(If-Then-Else(And(Has Status(Players In Slot(3, All Teams), Asleep), Compare((Players In Slot(3, All Teams)).thrower, ==, Null)), All Players(All Teams), Empty Array), Ring, If-Then-Else(Compare(Players In Slot(3, All Teams), !=, Global.leader), Color(Red), Color(Yellow)), Position Of(Players In Slot(3, All Teams)), Global.pickupRadius, Visible To Position Radius and Color);
+        Create Effect(If-Then-Else(And(Has Status(Players In Slot(4, All Teams), Asleep), Compare((Players In Slot(4, All Teams)).thrower, ==, Null)), All Players(All Teams), Empty Array), Ring, If-Then-Else(Compare(Players In Slot(4, All Teams), !=, Global.leader), Color(Red), Color(Yellow)), Position Of(Players In Slot(4, All Teams)), Global.pickupRadius, Visible To Position Radius and Color);
+        Create Effect(If-Then-Else(And(Has Status(Players In Slot(5, All Teams), Asleep), Compare((Players In Slot(5, All Teams)).thrower, ==, Null)), All Players(All Teams), Empty Array), Ring, If-Then-Else(Compare(Players In Slot(5, All Teams), !=, Global.leader), Color(Red), Color(Yellow)), Position Of(Players In Slot(5, All Teams)), Global.pickupRadius, Visible To Position Radius and Color);
+        Create Effect(If-Then-Else(And(Has Status(Players In Slot(6, All Teams), Asleep), Compare((Players In Slot(6, All Teams)).thrower, ==, Null)), All Players(All Teams), Empty Array), Ring, If-Then-Else(Compare(Players In Slot(6, All Teams), !=, Global.leader), Color(Red), Color(Yellow)), Position Of(Players In Slot(6, All Teams)), Global.pickupRadius, Visible To Position Radius and Color);
+        Create Effect(If-Then-Else(And(Has Status(Players In Slot(7, All Teams), Asleep), Compare((Players In Slot(7, All Teams)).thrower, ==, Null)), All Players(All Teams), Empty Array), Ring, If-Then-Else(Compare(Players In Slot(7, All Teams), !=, Global.leader), Color(Red), Color(Yellow)), Position Of(Players In Slot(7, All Teams)), Global.pickupRadius, Visible To Position Radius and Color);
+        Create Effect(If-Then-Else(And(Has Status(Players In Slot(8, All Teams), Asleep), Compare((Players In Slot(8, All Teams)).thrower, ==, Null)), All Players(All Teams), Empty Array), Ring, If-Then-Else(Compare(Players In Slot(8, All Teams), !=, Global.leader), Color(Red), Color(Yellow)), Position Of(Players In Slot(8, All Teams)), Global.pickupRadius, Visible To Position Radius and Color);
+        Create Effect(If-Then-Else(And(Has Status(Players In Slot(9, All Teams), Asleep), Compare((Players In Slot(9, All Teams)).thrower, ==, Null)), All Players(All Teams), Empty Array), Ring, If-Then-Else(Compare(Players In Slot(9, All Teams), !=, Global.leader), Color(Red), Color(Yellow)), Position Of(Players In Slot(9, All Teams)), Global.pickupRadius, Visible To Position Radius and Color);
+        Create Effect(If-Then-Else(And(Has Status(Players In Slot(10, All Teams), Asleep), Compare((Players In Slot(10, All Teams)).thrower, ==, Null)), All Players(All Teams), Empty Array), Ring, If-Then-Else(Compare(Players In Slot(10, All Teams), !=, Global.leader), Color(Red), Color(Yellow)), Position Of(Players In Slot(10, All Teams)), Global.pickupRadius, Visible To Position Radius and Color);
+        Create Effect(If-Then-Else(And(Has Status(Players In Slot(11, All Teams), Asleep), Compare((Players In Slot(11, All Teams)).thrower, ==, Null)), All Players(All Teams), Empty Array), Ring, If-Then-Else(Compare(Players In Slot(11, All Teams), !=, Global.leader), Color(Red), Color(Yellow)), Position Of(Players In Slot(11, All Teams)), Global.pickupRadius, Visible To Position Radius and Color);
+        Create In-World Text(Filtered Array(All Players(All Teams), And(And(Compare(Global.leader, !=, Null), Compare(Current Array Element, !=, Global.leader)), Is Alive(Global.leader))), Custom String("#1", Null, Null, Null), Global.leader, 2.0, Clip Against Surfaces, Visible To and Position, Custom Color(255, 221, 0, 255), Default Visibility);
+        Create In-World Text(All Players(All Teams), Global.stringTitle, Vector(0, Add(20, Global.y), 113), 4, Clip Against Surfaces, Visible To String and Color, Custom Color(Global.titleColorR, Global.titleColorG, Global.titleColorB, 255), Default Visibility);
+        Create In-World Text(All Players(All Teams), Global.stringSubtitle, Vector(0, Add(15, Global.y), 113), 2, Clip Against Surfaces, Visible To and String, Color(White), Default Visibility);
     }
 }
 
@@ -1023,6 +1082,97 @@ rule ("Debug Mode Setup") {
     }
     actions {
         Create HUD Text(Host Player, Server Load Average, String("Server Load Average", Null, Null, Null), Null, Left, 0, Color(White), Color(White), Color(White), Visible To and String, Default Visibility);
+        Create HUD Text(Host Player, Position Of(Host Player), Custom String("Host Player Position", Null, Null, Null), Null, Left, 1, Color(White), Color(White), Color(White), Visible To and String, Default Visibility);
+    }
+}
+
+rule ("Set New First Place") {
+    event {
+        Ongoing - Global;
+    }
+    conditions {
+        Or(And(Compare(Score Of(Global.leader), <, Score Of(First Of(Sorted Array(All Players(All Teams), Multiply(-1, Score Of(Current Array Element)))))), Entity Exists(Global.leader)), And(Compare(Global.leader, ==, Null), Compare(Score Of(First Of(Sorted Array(All Players(All Teams), Multiply(-1, Score Of(Current Array Element))))), >, 0))) == True;
+    }
+    actions {
+        Stop Forcing Player Outlines(Global.leader, All Players(All Teams));
+        Wait(0.016, Ignore Condition);
+        Set Global Variable(leaderArray, Sorted Array(All Players(All Teams), Multiply(-1, Score Of(Current Array Element))));
+        If(Compare(Count Of(Filtered Array(Global.leaderArray, Compare(Score Of(Current Array Element), >=, Score Of(First Of(Global.leaderArray))))), >, 1));
+            Set Global Variable(leader, First Of(Sorted Array(Global.leaderArray, Multiply(-1, (Current Array Element).scoreTime))));
+        Else;
+            Set Global Variable(leader, First Of(Global.leaderArray));
+        End;
+        Stop Forcing Player Outlines(Global.leader, All Players(All Teams));
+        Start Forcing Player Outlines(Global.leader, All Players(All Teams), True, Custom Color(255, 221, 0, 255), Always);
+    }
+}
+
+rule ("Destroy Leader") {
+    event {
+        Ongoing - Global;
+    }
+    conditions {
+        Entity Exists(Global.leader) == False;
+    }
+    actions {
+        Set Global Variable(leader, Null);
+    }
+}
+
+rule ("Leader Setup New Player") {
+    event {
+        Player Joined Match;
+        All;
+        All;
+    }
+    actions {
+        Start Forcing Player Outlines(Global.leader, Event Player, True, Custom Color(255, 221, 0, 255), Always);
+    }
+}
+
+rule ("Player Teleport") {
+    event {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+    conditions {
+        Has Spawned(Event Player) == True;
+        Is Alive(Event Player) == True;
+    }
+    actions {
+        Wait(0.016, Ignore Condition);
+        Teleport(Event Player, Sorted Array(Randomized Array(Global.spawnPositionArray), Count Of(Players Within Radius(Current Array Element, 10, All Teams, Off))));
+        Wait(0.016, Ignore Condition);
+        Set Facing(Event Player, Direction Towards(Event Player, Vector(0, Add(Global.y, Subtract(Eye Position(Event Player), Position Of(Event Player))), 0)), To World);
+        Set Player Variable(Event Player, ready, True);
+    }
+}
+
+rule ("Chase Color") {
+    event {
+        Ongoing - Global;
+    }
+    actions {
+        Chase Global Variable At Rate(titleColorB, 255, 300, Destination and Rate);
+        Wait Until(Compare(Global.titleColorB, ==, 255), 9999);
+        Stop Chasing Global Variable(titleColorB);
+        Chase Global Variable At Rate(titleColorR, 0, 300, Destination and Rate);
+        Wait Until(Compare(Global.titleColorR, ==, 0), 9999);
+        Stop Chasing Global Variable(titleColorR);
+        Chase Global Variable At Rate(titleColorG, 255, 300, Destination and Rate);
+        Wait Until(Compare(Global.titleColorG, ==, 255), 9999);
+        Stop Chasing Global Variable(titleColorG);
+        Chase Global Variable At Rate(titleColorB, 0, 300, Destination and Rate);
+        Wait Until(Compare(Global.titleColorB, ==, 0), 9999);
+        Stop Chasing Global Variable(titleColorB);
+        Chase Global Variable At Rate(titleColorR, 255, 300, Destination and Rate);
+        Wait Until(Compare(Global.titleColorR, ==, 255), 9999);
+        Stop Chasing Global Variable(titleColorR);
+        Chase Global Variable At Rate(titleColorG, 0, 300, Destination and Rate);
+        Wait Until(Compare(Global.titleColorG, ==, 0), 9999);
+        Stop Chasing Global Variable(titleColorG);
+        Loop;
     }
 }
 

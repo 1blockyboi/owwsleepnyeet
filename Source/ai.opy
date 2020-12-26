@@ -17,13 +17,14 @@ playervar aimInaccuracy
 
 subroutine targetRoam
 
+#!define positions(pos1, pos3, pos2)  [vect((pos1), (pos3), 0), vect((pos1), (pos3), (pos2)), vect((pos1), (pos3), -1 * (pos2)), vect(-1 * (pos1), (pos3), 0), vect(-1 * (pos1), 0, (pos2)), vect(-1 * (pos1), (pos3), -1 * (pos2)), vect(0, (pos3), (pos1)), vect((pos2), (pos3), (pos1)), vect(-1 * (pos1), (pos3), (pos1)), vect(0, (pos3), -1 * (pos1)), vect((pos2), (pos3), -1 * (pos1)), vect(-1 * (pos2), (pos3), -1 * (pos1))]
 #Creates Workshop Settings for AI Bots.
 rule "Initial Setup":
     spawnAI = createWorkshopSetting(bool, "Bots", "Bots Spawn", true)
     aiNumber = createWorkshopSetting(int<0:10>, "Bots", "Number of minimum required bots/players", 8)
     aimInaccuracyExtremes = createWorkshopSetting(float<0:10>, "Bots", "Range of Aim Error", 2)
     #This array is used by the bots to find different spots on the map
-    positionArray = [vect(25, 0, 0), vect(25, 0, 12.5), vect(25, 0, -12.5), vect(-25, 0, 0), vect(-25, 0, 12.5), vect(-25, 0, -12.5), vect(0, 0, 25), vect(12.5, 0, 25), vect(-12.5, 0, 25), vect(0, 0, -25), vect(12.5, 0, -25), vect(-12.5, 0, -25)]
+    positionArray = (positions(27, 46, 13.5) if getCurrentMap() == Map.WORKSHOP_CHAMBER else positions(25, 0, 12.5))
     willAttackPlayers = createWorkshopSetting(bool, "Bots", "Attack players (shoot sleep dart, chase, and yeet)", true)
     willEscape = createWorkshopSetting(bool, "Bots", "Bots will attempt to escape", true)
     willJump = createWorkshopSetting(bool, "Bots", "Bots will jump", true)
@@ -169,7 +170,6 @@ rule "Pick Up Player":
     @Condition willAttackPlayers == true
     
     eventPlayer.stopForcingThrottle()
-    #Easter Egg: Bot randomly teabags opponents.
     if random.uniform(0, 1) > 0.7:
         wait(0.25)
         eventPlayer.stopThrottleInDirection()
