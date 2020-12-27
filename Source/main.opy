@@ -128,6 +128,7 @@ rule "Set New First Place":
     wait()
     leaderArray = (sorted(getAllPlayers(), lambda player: -1 * player.getScore()))
     if (len([x for x in leaderArray if x.getScore() >= leaderArray[0].getScore()]) > 1):
+        leaderArray = [x for x in leaderArray if x.getScore() >= leaderArray[0].getScore()]
         leader = (sorted(leaderArray, lambda player: -1 * player.scoreTime))[0]
     else:
         leader = leaderArray[0]

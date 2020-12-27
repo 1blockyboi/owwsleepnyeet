@@ -2,7 +2,7 @@ settings
 {
 	main
 	{
-		Description: "Sleep 'N Yeet! By: Block#12425. Version: 1.4.0. Use Workshop Settings to change the game! Additional language support: Simplified CN."
+		Description: "Sleep 'N Yeet! By: Block#12425. Version: 1.4.1. Use Workshop Settings to change the game! Additional language support: Simplified CN."
 	}
 	lobby
 	{
@@ -129,7 +129,7 @@ rule ("Constant Strings") {
     }
     actions {
         Set Global Variable(stringCreator, Custom String("Block#12425", Null, Null, Null));
-        Set Global Variable(stringVersion, Custom String("1.4.0", Null, Null, Null));
+        Set Global Variable(stringVersion, Custom String("1.4.1", Null, Null, Null));
         Set Global Variable(stringDiscordLink, Custom String("discord.gg/CSKSVDH", Null, Null, Null));
         Set Global Variable(stringProjectLink, Custom String("workshop.codes/QKTTV", Null, Null, Null));
         Set Global Variable(stringCode, Custom String("Code: QKTTV", Null, Null, Null));
@@ -1098,6 +1098,7 @@ rule ("Set New First Place") {
         Wait(0.016, Ignore Condition);
         Set Global Variable(leaderArray, Sorted Array(All Players(All Teams), Multiply(-1, Score Of(Current Array Element))));
         If(Compare(Count Of(Filtered Array(Global.leaderArray, Compare(Score Of(Current Array Element), >=, Score Of(First Of(Global.leaderArray))))), >, 1));
+            Set Global Variable(leaderArray, Filtered Array(Global.leaderArray, Compare(Score Of(Current Array Element), >=, Score Of(First Of(Global.leaderArray)))));
             Set Global Variable(leader, First Of(Sorted Array(Global.leaderArray, Multiply(-1, (Current Array Element).scoreTime))));
         Else;
             Set Global Variable(leader, First Of(Global.leaderArray));

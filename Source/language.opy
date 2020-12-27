@@ -26,7 +26,7 @@ subroutine simplifiedChineseStrings
 #These strings are the same no matter the language.
 rule "Constant Strings":
     stringCreator = "Block#12425"
-    stringVersion = "1.4.0"
+    stringVersion = "1.4.1"
     stringDiscordLink = "discord.gg/CSKSVDH"
     stringProjectLink = "workshop.codes/QKTTV"
     stringCode = "Code: QKTTV"
