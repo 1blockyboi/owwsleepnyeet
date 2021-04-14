@@ -1,0 +1,1660 @@
+settings
+{
+    main
+    {
+        Description: "Sleep 'N Yeet! By: Block#12425. Version: 1.4.2. Use Workshop Settings to change the game! Additional language support: Simplified CN."
+    }
+    lobby
+    {
+        Allow Players Who Are In Queue: Yes
+        Match Voice Chat: Enabled
+        Max Spectators: 6
+        Return To Lobby: Never
+    }
+    modes
+    {
+        General
+        {
+            Allow Hero Switching: Off
+            Game Mode Start: Immediately
+            Hero Limit: Off
+            Respawn Time Scalar: 20%
+        }
+        Deathmatch
+        {
+            enabled maps
+            {
+                Workshop Island
+                Workshop Island Night
+                Workshop Chamber
+            }
+        }
+    }
+    heroes
+    {
+        General
+        {
+            Ana
+            {
+                Biotic Grenade: Off
+                Damage Dealt: 10%
+                Movement Speed: 110%
+                No Scope: On
+                Primary Fire: Off
+                Quick Melee: Off
+                Ultimate Generation - Combat Nano Boost: 0%
+                Ultimate Generation - Passive Nano Boost: 0%
+                Ultimate Generation Nano Boost: 10%
+            }
+
+            enabled heroes
+            {
+                Ana
+            }
+        }
+    }
+    extensions
+    {
+        Beam Effects
+        Buff Status Effects
+        Kinetic Explosion Effects
+    }
+}
+
+variables
+{
+    global:
+        0: _extendedGlobalCollection
+        1: _arrayBuilder
+        2: isDebug
+        3: titleColorR
+        4: titleColorG
+        5: titleColorB
+        6: y
+        7: spawnPositionArray
+        8: stringCreator
+        9: stringVersion
+        10: stringDiscordLink
+        11: stringCode
+        12: stringGHLink
+        13: stringProjectLink
+        14: stringLeft
+        15: stringRight
+        16: stringObjective
+        17: stringPick
+        18: stringEscape
+        19: stringDiscord
+        20: stringSubtitle
+        21: stringProject
+        22: stringUltEscape
+        23: stringTranslation
+        24: stringGraspEscape
+        25: stringTitle
+        26: stringAnaBotSpawn
+        27: stringGH
+        28: botNames
+        29: canAutoEscape
+        30: sleepDuration
+        31: ultPercentage
+        32: pickupRadius
+        33: positionArray
+        34: throwStrength
+        35: scale
+        36: moveSpeed
+        37: sleepCD
+        38: jumpSpeed
+        39: leader
+        40: leaderArray
+        41: aiNumber
+        42: aimInaccuracyExtremes
+        43: spawnAI
+        44: willAttackPlayers
+        45: willEscape
+        46: willJump
+        47: willRoam
+        48: willUlt
+    player:
+        0: _extendedPlayerCollection
+        1: playersCarried
+        2: thrower
+        3: i
+        4: j
+        5: ready
+        6: scoreTime
+        7: score
+        8: sprintEffectId
+        9: targetedPlayer
+        10: isChasing
+        11: aimInaccuracy
+}
+
+// Extended collection variables:
+// global [0]: _arrayBuilderStore
+
+// Class identifiers:
+
+subroutines
+{
+    0: hudCreation
+    1: languageDetection
+    2: englishStrings
+    3: simplifiedChineseStrings
+    4: effectCreation
+    5: debug
+    6: autoEscape
+    7: targetRoam
+}
+
+rule("Constant Strings")
+{
+
+    event
+    {
+        Ongoing - Global;
+    }
+
+    // Action count: 6
+    actions
+    {
+        Set Global Variable(stringCreator, Custom String("Block#12425", Null, Null, Null));
+        Set Global Variable(stringVersion, Custom String("1.4.2", Null, Null, Null));
+        Set Global Variable(stringDiscordLink, Custom String("discord.gg/CSKSVDH", Null, Null, Null));
+        Set Global Variable(stringProjectLink, Custom String("workshop.codes/QKTTV", Null, Null, Null));
+        Set Global Variable(stringCode, Custom String("Code: QKTTV", Null, Null, Null));
+        Set Global Variable(stringGHLink, Custom String("grandeurhammers.com/discord", Null, Null, Null));
+    }
+}
+
+rule("Ana Initial Setup")
+{
+
+    event
+    {
+        Ongoing - Global;
+    }
+
+    // Action count: 10
+    actions
+    {
+        Set Global Variable(sleepDuration, Workshop Setting Real(Custom String("General", Null, Null, Null), Custom String("Sleep Duration in Seconds (Default󠀺 5)", Null, Null, Null), 5, 1, 10, 0));
+        Set Global Variable(ultPercentage, Workshop Setting Integer(Custom String("General", Null, Null, Null), Custom String("Ultimate Percentage Added per elimination (Default󠀺 20%)", Null, Null, Null), 20, 0, 100, 0));
+        Set Global Variable(pickupRadius, Workshop Setting Real(Custom String("General", Null, Null, Null), Custom String("Pickup Radius in Meters (Default󠀺 1.5)", Null, Null, Null), 1.5, 0.5, 20, 0));
+        Set Global Variable(canAutoEscape, Workshop Setting Toggle(Custom String("General", Null, Null, Null), Custom String("Auto escape from players (Default󠀺 disabled)", Null, Null, Null), False, 0));
+        Set Global Variable(throwStrength, Workshop Setting Integer(Custom String("General", Null, Null, Null), Custom String("Throw Strength Percentage (Default󠀺 100%)", Null, Null, Null), 100, 25, 175, 0));
+        Set Global Variable(scale, Workshop Setting Real(Custom String("General", Null, Null, Null), Custom String("Scale Percentage of Ana (Default󠀺 100%)", Null, Null, Null), 100, 10, 500, 0));
+        Set Global Variable(moveSpeed, Workshop Setting Real(Custom String("General", Null, Null, Null), Custom String("Move Speed Percentage of Ana (Default󠀺 100%)", Null, Null, Null), 100, 10, 500, 0));
+        Set Global Variable(sleepCD, Workshop Setting Real(Custom String("General", Null, Null, Null), Custom String("Sleep Dart Cooldown in Seconds (Default󠀺 2)", Null, Null, Null), 2, 0, 20, 0));
+        Set Global Variable(jumpSpeed, Workshop Setting Real(Custom String("General", Null, Null, Null), Custom String("Jump Speed Percentage (Default󠀺 100%)", Null, Null, Null), 100, 0, 500, 0));
+        Set Global Variable(leader, Null);
+    }
+}
+
+rule("AI Initial Setup")
+{
+
+    event
+    {
+        Ongoing - Global;
+    }
+
+    // Action count: 12
+    actions
+    {
+        Set Global Variable(spawnAI, Workshop Setting Toggle(Custom String("Bots", Null, Null, Null), Custom String("Bots Spawn", Null, Null, Null), True, -2));
+        Set Global Variable(aiNumber, Workshop Setting Integer(Custom String("Bots", Null, Null, Null), Custom String("Number of minimum required bots/players", Null, Null, Null), 12, 0, 12, -1));
+        Set Global Variable(aimInaccuracyExtremes, Workshop Setting Real(Custom String("Bots", Null, Null, Null), Custom String("Range of Aim Error", Null, Null, Null), 2, 0, 10, 0));
+        "This array is used by the bots to find different spots on the map"Set Global Variable(positionArray, If-Then-Else(Compare(Current Map, ==, Map(Workshop Chamber)), Array(Vector(27, 46, Empty Array), Vector(27, 46, 13.5), Vector(27, 46, -13.5), Vector(-27, 46, Empty Array), Vector(-27, Empty Array, 13.5), Vector(-27, 46, -13.5), Vector(Empty Array, 46, 27), Vector(13.5, 46, 27), Vector(-27, 46, 27), Vector(Empty Array, 46, -27), Vector(13.5, 46, -27), Vector(-13.5, 46, -27)), Array(Vector(25, Empty Array, Empty Array), Vector(25, Empty Array, 12.5), Vector(25, Empty Array, -12.5), Vector(-25, Empty Array, Empty Array), Vector(-25, Empty Array, 12.5), Vector(-25, Empty Array, -12.5), Vector(Empty Array, Empty Array, 25), Vector(12.5, Empty Array, 25), Vector(-25, Empty Array, 25), Vector(Empty Array, Empty Array, -25), Vector(12.5, Empty Array, -25), Vector(-12.5, Empty Array, -25))));
+        Set Global Variable(willAttackPlayers, Workshop Setting Toggle(Custom String("Bots", Null, Null, Null), Custom String("Attack players (shoot sleep dart, chase, and yeet)", Null, Null, Null), True, 0));
+        Set Global Variable(willEscape, Workshop Setting Toggle(Custom String("Bots", Null, Null, Null), Custom String("Bots will attempt to escape", Null, Null, Null), True, 0));
+        Set Global Variable(willJump, Workshop Setting Toggle(Custom String("Bots", Null, Null, Null), Custom String("Bots will jump", Null, Null, Null), True, 0));
+        Set Global Variable(willRoam, Workshop Setting Toggle(Custom String("Bots", Null, Null, Null), Custom String("Bots will roam around the map", Null, Null, Null), True, 0));
+        Set Global Variable(willUlt, Workshop Setting Toggle(Custom String("Bots", Null, Null, Null), Custom String("Bots will use ultimate", Null, Null, Null), True, 0));
+        If(Compare(Global Variable(spawnAI), ==, True));
+            Create HUD Text(All Players(Team(All)), Null, Null, Custom String("{0} {1}", Global Variable(stringAnaBotSpawn), Count Of(Filtered Array(All Players(Team(All)), Is Dummy Bot(Current Array Element))), Null), Left, 1, Null, Null, Color(White), Visible To And String, Default Visibility);
+        End;
+    }
+}
+
+rule("HUD Creation Subroutine")
+{
+
+    event
+    {
+        Subroutine;
+        hudCreation;
+    }
+
+    // Action count: 9
+    actions
+    {
+        Create HUD Text(All Players(Team(All)), Null, Null, Global Variable(stringProject), Right, -0.99, Null, Null, Color(Green), Visible To And String, Default Visibility);
+        Create HUD Text(All Players(Team(All)), Null, Null, Global Variable(stringCode), Right, -0.9, Null, Null, Custom Color(Global Variable(titleColorR), Global Variable(titleColorG), Global Variable(titleColorB), 255), Visible To String and Color, Default Visibility);
+        Create HUD Text(All Players(Team(All)), Null, Null, Custom String(" \n{0}", Global Variable(stringGH), Null, Null), Right, -0.89, Null, Null, Color(Yellow), Visible To And String, Default Visibility);
+        Create HUD Text(All Players(Team(All)), Null, Global Variable(stringTranslation), Null, Right, -2, Null, Color(White), Null, Visible To And String, Default Visibility);
+        Create HUD Text(All Players(Team(All)), Null, Null, Global Variable(stringGHLink), Right, -0.88, Null, Null, Color(Yellow), Visible To And String, Default Visibility);
+        Create HUD Text(Filtered Array(All Players(Team(All)), Compare(Ultimate Charge Percent(Current Array Element), ==, 100)), Null, Null, Custom String("{0}{1}", Input Binding String(Button(Ultimate)), Global Variable(stringUltEscape), Null), Top, 1.2, Null, Null, Custom Color(Global Variable(titleColorR), Global Variable(titleColorG), Global Variable(titleColorB), 255), Visible To String and Color, Visible Never);
+        Create HUD Text(Filtered Array(All Players(Team(All)), Not(Has Status(Current Array Element, Asleep))), Null, Null, Custom String("{0}{1}", Input Binding String(Button(Primary Fire)), Global Variable(stringLeft), Null), Top, 1, Null, Null, Color(Aqua), Visible To And String, Visible Never);
+        Create HUD Text(Filtered Array(All Players(Team(All)), Not(Has Status(Current Array Element, Asleep))), Null, Null, Custom String("{0}{1}", Input Binding String(Button(Secondary Fire)), Global Variable(stringRight), Null), Top, 1.1, Null, Null, Color(Orange), Visible To And String, Visible Never);
+        Create HUD Text(Filtered Array(All Players(Team(All)), And(And(Compare(Player Variable(Player Variable(Current Array Element, thrower), playersCarried), ==, Current Array Element), Not(Has Status(Current Array Element, Asleep))), Compare(Global Variable(canAutoEscape), ==, False))), Null, Null, Custom String("{0}{1}", Input Binding String(Button(Jump)), Global Variable(stringEscape), Null), Top, 1.3, Null, Null, Color(Yellow), Visible To And String, Default Visibility);
+    }
+}
+
+rule("English")
+{
+
+    event
+    {
+        Subroutine;
+        englishStrings;
+    }
+
+    // Action count: 15
+    actions
+    {
+        Set Global Variable(stringSubtitle, Custom String("Created by: {0}. Version: {1}", Global Variable(stringCreator), Global Variable(stringVersion), Null));
+        Set Global Variable(stringLeft, Custom String(" to pick up sleeping player", Null, Null, Null));
+        Set Global Variable(stringRight, Custom String(" to yeet carried player", Null, Null, Null));
+        Set Global Variable(stringObjective, Custom String("Yeet sleeping players off the island!", Null, Null, Null));
+        Set Global Variable(stringPick, Custom String("Picked up", Null, Null, Null));
+        Set Global Variable(stringEscape, Custom String(" to escape her grasp!", Null, Null, Null));
+        Set Global Variable(stringDiscord, Custom String("Join the discord: {0} (All caps)", Global Variable(stringDiscordLink), Null, Null));
+        Set Global Variable(stringProject, Custom String("Project: {0}", Global Variable(stringProjectLink), Null, Null));
+        Set Global Variable(stringUltEscape, Custom String(" to wake up and get a speed boost!", Null, Null, Null));
+        Set Global Variable(stringTranslation, Custom String("", Null, Null, Null));
+        Set Global Variable(stringGraspEscape, Custom String("escaped!", Null, Null, Null));
+        Set Global Variable(stringTitle, Custom String("Sleep 'N Yeet", Null, Null, Null));
+        Set Global Variable(stringAnaBotSpawn, Custom String("{0} Bots Enabled. Current count:", Ability Icon String(Hero(Echo), Button(Ultimate)), Null, Null));
+        Set Global Variable(stringGH, Custom String("{0} Certified by Grandeur Hammers", Ability Icon String(Hero(Torbjörn), Button(Ability 2)), Null, Null));
+        Set Global Variable(botNames, Array(Custom String("Nuts", Null, Null, Null), Custom String("Bolts", Null, Null, Null), Custom String("Smith", Null, Null, Null), Custom String("Oracle", Null, Null, Null), Custom String("Wheatley", Null, Null, Null), Custom String("Hello World", Null, Null, Null), Custom String("0011011000111001", Null, Null, Null), Custom String("M. Zuckerberg", Null, Null, Null), Custom String("Spyware", Null, Null, Null), Custom String("Terminator", Null, Null, Null), Custom String("REX", Null, Null, Null), Custom String("Curly", Null, Null, Null), Custom String("Quote", Null, Null, Null), Custom String("Scrum", Null, Null, Null), Custom String("Aimbot", Null, Null, Null), Custom String("ROB", Null, Null, Null), Custom String("Alexa", Null, Null, Null), Custom String("Siri", Null, Null, Null), Custom String("Fifteen", Null, Null, Null), Custom String("Prime", Null, Null, Null), Custom String("Clank", Null, Null, Null), Custom String("EVE", Null, Null, Null), Custom String("Athena", Null, Null, Null), Custom String("AAA", Null, Null, Null), Custom String("Anubis", Null, Null, Null), Custom String("Rodney", Null, Null, Null), Custom String("Virus", Null, Null, Null), Custom String("Trojan", Null, Null, Null), Custom String("Middleman", Null, Null, Null), Custom String("DDOS", Null, Null, Null), Custom String("Kernel", Null, Null, Null), Custom String("Tux", Null, Null, Null), Custom String("Wilbur", Null, Null, Null), Custom String("Echo", Null, Null, Null)));
+    }
+}
+
+rule("Simplified CN (Thanks to Zesty for translation)")
+{
+
+    event
+    {
+        Subroutine;
+        simplifiedChineseStrings;
+    }
+
+    // Action count: 15
+    actions
+    {
+        Set Global Variable(stringSubtitle, Custom String("由{0}制作。版本：{1}", Global Variable(stringCreator), Global Variable(stringVersion), Null));
+        Set Global Variable(stringLeft, Custom String(" 捡起沉睡的玩家", Null, Null, Null));
+        Set Global Variable(stringRight, Custom String(" 抛投抓住的玩家", Null, Null, Null));
+        Set Global Variable(stringObjective, Custom String("把睡着的玩家丢出小岛！", Null, Null, Null));
+        Set Global Variable(stringPick, Custom String("捡起", Null, Null, Null));
+        Set Global Variable(stringEscape, Custom String("：逃离她的魔爪！", Null, Null, Null));
+        Set Global Variable(stringDiscord, Custom String("加入Discord：{0}（全大写）", Global Variable(stringDiscordLink), Null, Null));
+        Set Global Variable(stringProject, Custom String("项目：{0}（全小写）", Global Variable(stringProjectLink), Null, Null));
+        Set Global Variable(stringUltEscape, Custom String(" 获得加速，如果是沉睡状态则将睡醒！", Null, Null, Null));
+        Set Global Variable(stringTranslation, Custom String("由Zesty#51453翻译", Null, Null, Null));
+        Set Global Variable(stringGraspEscape, Custom String("逃脱了！", Null, Null, Null));
+        Set Global Variable(stringTitle, Custom String("梦中丢人", Null, Null, Null));
+        Set Global Variable(stringAnaBotSpawn, Custom String("{0} 启用了安娜机器人。目前数量：", Ability Icon String(Hero(Torbjörn), Button(Ability 2)), Null, Null));
+        Set Global Variable(stringGH, Custom String("{0} 由Grandeur Hammers认证", Ability Icon String(Hero(Torbjörn), Button(Ability 2)), Null, Null));
+        Set Global Variable(botNames, Array(Custom String("安娜", Null, Null, Null)));
+    }
+}
+
+rule("Language Detection")
+{
+
+    event
+    {
+        Subroutine;
+        languageDetection;
+    }
+
+    // Action count: 7
+    actions
+    {
+        If(Compare(Custom String("{0}", Hero(Ana), Null, Null), ==, Custom String("Ana", Null, Null, Null)));
+            Call Subroutine(englishStrings);
+            Else If(Compare(Custom String("{0}", Hero(Ana), Null, Null), ==, Custom String("安娜", Null, Null, Null)));
+            Call Subroutine(simplifiedChineseStrings);
+            Else;
+            Call Subroutine(englishStrings);
+        End;
+    }
+}
+
+rule("Other Effect Creation")
+{
+
+    event
+    {
+        Subroutine;
+        effectCreation;
+    }
+
+    // Action count: 3
+    actions
+    {
+        Create In-World Text(Filtered Array(All Players(Team(All)), And(And(Compare(Global Variable(leader), !=, Null), Compare(Current Array Element, !=, Global Variable(leader))), Is Alive(Global Variable(leader)))), Custom String("#1", Null, Null, Null), Global Variable(leader), 2, Clip Against Surfaces, Visible To And Position, Custom Color(255, 221, 0, 255), Default Visibility);
+        Create In-World Text(All Players(Team(All)), Global Variable(stringTitle), Vector(0, Add(20, Global Variable(y)), 113), 4, Clip Against Surfaces, Visible To String and Color, Custom Color(Global Variable(titleColorR), Global Variable(titleColorG), Global Variable(titleColorB), 255), Default Visibility);
+        Create In-World Text(All Players(Team(All)), Global Variable(stringSubtitle), Vector(0, Add(15, Global Variable(y)), 113), 2, Clip Against Surfaces, Visible To And String, Color(White), Default Visibility);
+    }
+}
+
+rule("Debug Mode Setup")
+{
+
+    event
+    {
+        Subroutine;
+        debug;
+    }
+
+    // Action count: 2
+    actions
+    {
+        Create HUD Text(Host Player, Server Load Average, Custom String("Server Load Average", Null, Null, Null), Null, Left, 0, Color(White), Color(White), Color(White), Visible To And String, Default Visibility);
+        Create HUD Text(Host Player, Position Of(Host Player), Custom String("Host Player Position", Null, Null, Null), Null, Left, 1, Color(White), Color(White), Color(White), Visible To And String, Default Visibility);
+    }
+}
+
+rule("Initial Setup")
+{
+
+    event
+    {
+        Ongoing - Global;
+    }
+
+    // Action count: 26
+    actions
+    {
+        Set Global Variable(isDebug, Workshop Setting Toggle(Custom String("Debug", Null, Null, Null), Custom String("Enable Debug HUD", Null, Null, Null), False, 0));
+        Set Global Variable(titleColorR, 255);
+        Set Global Variable(titleColorG, 0);
+        Set Global Variable(titleColorB, 0);
+        If(Compare(Current Map, ==, Map(Workshop Chamber)));
+            Set Global Variable(y, 46);
+            Else;
+            Set Global Variable(y, 0);
+        End;
+        Set Global Variable(spawnPositionArray, Array(Vector(15, Global Variable(y), 15), Vector(10, Global Variable(y), 15), Vector(5, Global Variable(y), 15), Vector(Empty Array, Global Variable(y), 15), Vector(-5, Global Variable(y), 15), Vector(-10, Global Variable(y), 15), Vector(-15, Global Variable(y), 15), Vector(15, Global Variable(y), 10), Vector(15, Global Variable(y), 5), Vector(15, Global Variable(y), Empty Array), Vector(15, Global Variable(y), -5), Vector(15, Global Variable(y), -10), Vector(15, Global Variable(y), -15), Vector(10, Global Variable(y), -15), Vector(5, Global Variable(y), -15), Vector(Empty Array, Global Variable(y), -15), Vector(-5, Global Variable(y), -15), Vector(-10, Global Variable(y), -15), Vector(-15, Global Variable(y), -15), Vector(-15, Global Variable(y), 10), Vector(-15, Global Variable(y), 5), Vector(-15, Global Variable(y), Empty Array), Vector(-15, Global Variable(y), -5), Vector(-15, Global Variable(y), -10)));
+        Call Subroutine(hudCreation);
+        Call Subroutine(languageDetection);
+        Call Subroutine(effectCreation);
+        If(Compare(Current Map, ==, Map(Workshop Chamber)));
+            Create Beam Effect(All Players(Team(All)), Grapple Beam, Vector(21, Empty Array, 21), Vector(21, -1000, 21), Color(White), Visible To);
+            Create Beam Effect(All Players(Team(All)), Grapple Beam, Vector(21, Empty Array, -21), Vector(21, -1000, -21), Color(White), Visible To);
+            Create Beam Effect(All Players(Team(All)), Grapple Beam, Vector(-21, Empty Array, 21), Vector(-21, -1000, 21), Color(White), Visible To);
+            Create Beam Effect(All Players(Team(All)), Grapple Beam, Vector(-21, Empty Array, -21), Vector(-21, -1000, -21), Color(White), Visible To);
+            Else If(Compare(Current Map, ==, Map(Workshop Island Night)));
+            Create Effect(All Players(Team(All)), Cloud, Color(White), Vector(Empty Array, -2, Empty Array), 20, Visible To);
+        End;
+        If(Compare(Global Variable(isDebug), ==, True));
+            Call Subroutine(debug);
+            Else;
+            Disable Inspector Recording;
+        End;
+    }
+}
+
+rule("Player Teleport")
+{
+
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Has Spawned(Event Player) == True;
+        Is Alive(Event Player) == True;
+    }
+
+    // Action count: 5
+    actions
+    {
+        Wait(0.016, Ignore Condition);
+        Teleport(Event Player, Sorted Array(Randomized Array(Global Variable(spawnPositionArray)), Count Of(Players Within Radius(Current Array Element, 10, Team(All), Off))));
+        Wait(0.016, Ignore Condition);
+        Set Facing(Event Player, Direction Towards(Event Player, Vector(Empty Array, Subtract(Add(Global Variable(y), Eye Position(Event Player)), Position Of(Event Player)), Empty Array)), To World);
+        Set Player Variable(Event Player, ready, True);
+    }
+}
+
+rule("Chase Color")
+{
+
+    event
+    {
+        Ongoing - Global;
+    }
+
+    // Action count: 19
+    actions
+    {
+        Chase Global Variable At Rate(titleColorB, 255, 450, Destination And Rate);
+        Wait Until(Compare(Global Variable(titleColorB), ==, 255), 9999);
+        Stop Chasing Global Variable(titleColorB);
+        Chase Global Variable At Rate(titleColorR, 0, 450, Destination And Rate);
+        Wait Until(Compare(Global Variable(titleColorR), ==, 0), 9999);
+        Stop Chasing Global Variable(titleColorR);
+        Chase Global Variable At Rate(titleColorG, 255, 450, Destination And Rate);
+        Wait Until(Compare(Global Variable(titleColorG), ==, 255), 9999);
+        Stop Chasing Global Variable(titleColorG);
+        Chase Global Variable At Rate(titleColorB, 0, 450, Destination And Rate);
+        Wait Until(Compare(Global Variable(titleColorB), ==, 0), 9999);
+        Stop Chasing Global Variable(titleColorB);
+        Chase Global Variable At Rate(titleColorR, 255, 450, Destination And Rate);
+        Wait Until(Compare(Global Variable(titleColorR), ==, 255), 9999);
+        Stop Chasing Global Variable(titleColorR);
+        Chase Global Variable At Rate(titleColorG, 0, 450, Destination And Rate);
+        Wait Until(Compare(Global Variable(titleColorG), ==, 0), 9999);
+        Stop Chasing Global Variable(titleColorG);
+        Loop;
+    }
+}
+
+rule("New Player Setup")
+{
+
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Is Game In Progress == True;
+    }
+
+    // Action count: 11
+    actions
+    {
+        Set Objective Description(Event Player, Global Variable(stringObjective), Visible To);
+        Start Heal Over Time(Event Player, Event Player, 9999, 9999);
+        Set Player Variable(Event Player, playersCarried, Empty Array);
+        Start Scaling Player(Event Player, Divide(Global Variable(scale), 100), False);
+        Start Modifying Hero Voice Lines(Event Player, Add(Divide(Subtract(Global Variable(scale), 100), -180), 1), False);
+        Set Move Speed(Event Player, Global Variable(moveSpeed));
+        Set Jump Vertical Speed(Event Player, Global Variable(jumpSpeed));
+        Set Player Variable(Event Player, scoreTime, Match Time);
+        Set Player Variable(Event Player, score, 0);
+        Wait(0.016, Ignore Condition);
+        Create Effect(If-Then-Else(And(Has Status(Event Player, Asleep), Compare(Player Variable(Event Player, thrower), ==, Null)), All Players(Team(All)), Empty Array), Ring, If-Then-Else(Compare(Event Player, !=, Global Variable(leader)), Color(Red), Color(Yellow)), Update Every Frame(Position Of(Event Player)), Global Variable(pickupRadius), Visible To Position Radius and Color);
+    }
+}
+
+rule("Assembling Heroes Setup")
+{
+
+    event
+    {
+        Ongoing - Global;
+    }
+
+    conditions
+    {
+        Is Assembling Heroes == True;
+    }
+
+    // Action count: 5
+    actions
+    {
+        Set Player Variable(All Players(Team(All)), playersCarried, Null);
+        Set Player Variable(All Players(Team(All)), thrower, Null);
+        Detach Players(All Players(Team(All)));
+        Set Move Speed(All Players(Team(All)), 100);
+        Set Match Time(10);
+    }
+}
+
+rule("Pickup player")
+{
+
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Is Button Held(Event Player, Button(Primary Fire)) == True;
+        Has Status(Event Player, Asleep) == False;
+        Entity Exists(First Of(Sorted Array(Filtered Array(All Players(Team(All)), And(And(And(And(Has Status(Current Array Element, Asleep), Compare(Current Array Element, !=, Event Player)), Compare(Distance Between(Event Player, Current Array Element), <=, Global Variable(pickupRadius))), Not(Entity Exists(Player Variable(Current Array Element, thrower)))), Is On Ground(Current Array Element))), Distance Between(Event Player, Current Array Element)))) == True;
+    }
+
+    // Action count: 6
+    actions
+    {
+        Modify Player Variable(Event Player, playersCarried, Append To Array, First Of(Sorted Array(Filtered Array(All Players(Team(All)), And(And(Has Status(Current Array Element, Asleep), Compare(Current Array Element, !=, Event Player)), Compare(Player Variable(Event Player, thrower), ==, Null))), Distance Between(Current Array Element, Event Player))));
+        Set Player Variable(Last Of(Player Variable(Event Player, playersCarried)), thrower, Event Player);
+        Attach Players(Last Of(Player Variable(Event Player, playersCarried)), Event Player, Vector(Empty Array, Divide(Multiply(Add(2, Index Of Array Value(Player Variable(Event Player, playersCarried), Last Of(Player Variable(Event Player, playersCarried)))), Global Variable(scale)), 100), Empty Array));
+        Play Effect(Event Player, Buff Impact Sound, Color(White), Event Player, 200);
+        Small Message(Event Player, Custom String("{0} {1}!", Global Variable(stringPick), Last Of(Player Variable(Event Player, playersCarried)), Null));
+        Wait(0.25, Ignore Condition);
+    }
+}
+
+rule("Reset Thrower")
+{
+
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Is On Ground(Event Player) == True;
+        Is True For All(Player Variable(Player Variable(Event Player, thrower), playersCarried), Compare(Current Array Element, !=, Event Player)) == True;
+    }
+
+    // Action count: 2
+    actions
+    {
+        Wait(0.5, Abort When False);
+        Set Player Variable(Event Player, thrower, Null);
+    }
+}
+
+rule("Sleep Setup With Player")
+{
+
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Has Status(Event Player, Asleep) == True;
+        Count Of(Player Variable(Event Player, playersCarried)) > 0;
+    }
+
+    // Action count: 5
+    actions
+    {
+        If(Compare(Count Of(Player Variable(Event Player, playersCarried)), >, 0));
+            Detach Players(First Of(Player Variable(Event Player, playersCarried)));
+            Set Player Variable(First Of(Player Variable(Event Player, playersCarried)), thrower, Null);
+            Modify Player Variable(Event Player, playersCarried, Remove From Array By Index, 0);
+        End;
+    }
+}
+
+rule("Sleep Setup")
+{
+
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Has Status(Event Player, Asleep) == True;
+    }
+
+    // Action count: 1
+    actions
+    {
+        Set Ability Cooldown(Event Player, Button(Ability 1), 0);
+    }
+}
+
+rule("Throw player")
+{
+
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Is Button Held(Event Player, Button(Secondary Fire)) == True;
+        Has Status(Event Player, Asleep) == False;
+        Count Of(Player Variable(Event Player, playersCarried)) > 0;
+    }
+
+    // Action count: 6
+    actions
+    {
+        While(Compare(Player Variable(Event Player, playersCarried), !=, Empty Array));
+            Detach Players(First Of(Player Variable(Event Player, playersCarried)));
+            Apply Impulse(First Of(Player Variable(Event Player, playersCarried)), Vector(X Component Of(Facing Direction Of(Event Player)), -0.1, Z Component Of(Facing Direction Of(Event Player))), Multiply(Global Variable(throwStrength), 0.4), To World, Cancel Contrary Motion);
+            Modify Player Variable(Event Player, playersCarried, Remove From Array By Index, 0);
+            Wait(0.05, Ignore Condition);
+        End;
+    }
+}
+
+rule("Escape from grasp")
+{
+
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Has Status(Event Player, Asleep) == False;
+        Is Button Held(Event Player, Button(Jump)) == True;
+        Player Variable(Event Player, thrower) != Null;
+        Is True For Any(Player Variable(Player Variable(Event Player, thrower), playersCarried), Compare(Current Array Element, ==, Event Player)) == True;
+    }
+
+    // Action count: 14
+    actions
+    {
+        Detach Players(Event Player);
+        Set Player Variable(Event Player, i, Index Of Array Value(Player Variable(Player Variable(Event Player, thrower), playersCarried), Event Player));
+        Small Message(Player Variable(Event Player, thrower), Custom String("{0} {1}", Event Player, Global Variable(stringGraspEscape), Null));
+        Modify Player Variable(Player Variable(Event Player, thrower), playersCarried, Remove From Array By Index, Player Variable(Event Player, i));
+        While(Compare(Count Of(Player Variable(Player Variable(Event Player, thrower), playersCarried)), >=, Add(Player Variable(Event Player, i), 1)));
+            "Sometimes the array has a player that does not exist and/or by the time the small message is sent, player value is lost. This check will prevent a weird small message from being sent."If(Compare(Value In Array(Player Variable(Player Variable(Event Player, thrower), playersCarried), Player Variable(Event Player, i)), !=, Null));
+                Small Message(Player Variable(Event Player, thrower), Custom String("{0} {1}", Value In Array(Player Variable(Player Variable(Event Player, thrower), playersCarried), Player Variable(Event Player, i)), Global Variable(stringGraspEscape), Null));
+            End;
+            Detach Players(Value In Array(Player Variable(Player Variable(Event Player, thrower), playersCarried), Player Variable(Event Player, i)));
+            Set Player Variable(Value In Array(Player Variable(Player Variable(Event Player, thrower), playersCarried), Player Variable(Event Player, i)), thrower, Null);
+            Modify Player Variable(Player Variable(Event Player, thrower), playersCarried, Remove From Array By Index, Player Variable(Event Player, i));
+            Wait(0.05, Ignore Condition);
+        End;
+        Set Player Variable(Event Player, thrower, Null);
+    }
+}
+
+rule("Too Far Gone kill credit")
+{
+
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Y Component Of(Position Of(Event Player)) < If-Then-Else(Compare(Current Map, ==, Map(Workshop Chamber)), 41, -5);
+        Player Variable(Event Player, ready) != False;
+    }
+
+    // Action count: 6
+    actions
+    {
+        Kill(Event Player, Player Variable(Event Player, thrower));
+        Set Player Variable(Event Player, ready, False);
+        Set Ultimate Charge(Player Variable(Event Player, thrower), Add(Ultimate Charge Percent(Player Variable(Event Player, thrower)), Global Variable(ultPercentage)));
+        Wait(0.25, Ignore Condition);
+        Set Player Variable(Event Player, playersCarried, Empty Array);
+        Set Player Variable(Event Player, thrower, Null);
+    }
+}
+
+rule("Using Ultimate")
+{
+
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Is Using Ultimate(Event Player) == True;
+    }
+
+    // Action count: 4
+    actions
+    {
+        Set Move Speed(Event Player, Multiply(Global Variable(moveSpeed), 1.4));
+        Play Effect(All Players(Team(All)), Bastion Tank Cannon Explosion Effect, Color(White), Event Player, 5);
+        Create Effect(All Players(Team(All)), Soldier: 76 Sprinting Effect, Color(White), Event Player, 1, Visible To Position and Radius);
+        Set Player Variable(Event Player, sprintEffectId, Last Created Entity);
+    }
+}
+
+rule("Is not using Ultimate")
+{
+
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Is Using Ultimate(Event Player) == False;
+    }
+
+    // Action count: 2
+    actions
+    {
+        Set Move Speed(Event Player, Global Variable(moveSpeed));
+        Destroy Effect(Player Variable(Event Player, sprintEffectId));
+    }
+}
+
+rule("Ult Cancels Sleep")
+{
+
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Has Status(Event Player, Asleep) == True;
+        Is Button Held(Event Player, Button(Ultimate)) == True;
+        Ultimate Charge Percent(Event Player) == 100;
+    }
+
+    // Action count: 7
+    actions
+    {
+        Clear Status(Event Player, Asleep);
+        Wait(0.8, Ignore Condition);
+        Press Button(Event Player, Button(Ultimate));
+        Wait(1.2, Ignore Condition);
+        If(And(Compare(Ultimate Charge Percent(Event Player), >, 0), Not(Is Using Ultimate(Event Player))));
+            Set Ultimate Charge(Event Player, 0);
+        End;
+    }
+}
+
+rule("Slept for too long")
+{
+
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Has Status(Event Player, Asleep) == True;
+        Player Variable(Event Player, thrower) == Null;
+    }
+
+    // Action count: 17
+    actions
+    {
+        Wait(1, Abort When False);
+        Wait(1, Abort When False);
+        Wait(1, Abort When False);
+        Wait(1, Abort When False);
+        Wait(1, Abort When False);
+        Wait(1, Abort When False);
+        Wait(1, Abort When False);
+        Wait(1, Abort When False);
+        Wait(1, Abort When False);
+        Wait(1, Abort When False);
+        Wait(1, Abort When False);
+        Wait(1, Abort When False);
+        Wait(1, Abort When False);
+        Wait(1, Abort When False);
+        Wait(1, Abort When False);
+        Set Status(Event Player, Null, Phased Out, 5);
+        Clear Status(Event Player, Asleep);
+    }
+}
+
+rule("Auto Escape Subroutine")
+{
+
+    event
+    {
+        Subroutine;
+        autoEscape;
+    }
+
+    // Action count: 3
+    actions
+    {
+        Start Holding Button(Event Player, Button(Jump));
+        Wait(0.016, Ignore Condition);
+        Stop Holding Button(Event Player, Button(Jump));
+    }
+}
+
+rule("Auto Escape")
+{
+
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Global Variable(canAutoEscape) == True;
+        Entity Exists(Player Variable(Event Player, thrower)) == True;
+        Has Status(Event Player, Asleep) == False;
+    }
+
+    // Action count: 1
+    actions
+    {
+        Call Subroutine(autoEscape);
+    }
+}
+
+rule("Manual Sleep")
+{
+
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Has Status(Event Player, Asleep) == True;
+    }
+
+    // Action count: 1
+    actions
+    {
+        Set Status(Event Player, Null, Asleep, Global Variable(sleepDuration));
+    }
+}
+
+rule("Entity Check EventPlayer().playersCarried")
+{
+
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Count Of(Player Variable(Event Player, playersCarried)) > 0;
+        Is True For Any(Player Variable(Event Player, playersCarried), Not(Entity Exists(Current Array Element))) == True;
+    }
+
+    // Action count: 5
+    actions
+    {
+        For Player Variable(Event Player, j, 0, Count Of(Player Variable(Event Player, playersCarried)), 1);
+            If(Not(Entity Exists(Value In Array(Player Variable(Event Player, playersCarried), Player Variable(Event Player, j)))));
+                Modify Player Variable(Event Player, playersCarried, Remove From Array By Index, Player Variable(Event Player, j));
+            End;
+        End;
+    }
+}
+
+rule("Entity Check EventPlayer().thrower")
+{
+
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Player Variable(Event Player, thrower) != Null;
+        Not(Entity Exists(Player Variable(Event Player, thrower))) == True;
+    }
+
+    // Action count: 1
+    actions
+    {
+        Set Player Variable(Event Player, thrower, Null);
+    }
+}
+
+rule("Sleep Dart Manual CD")
+{
+
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Ability Cooldown(Event Player, Button(Ability 1)) > 0;
+    }
+
+    // Action count: 1
+    actions
+    {
+        Set Ability Cooldown(Event Player, Button(Ability 1), Global Variable(sleepCD));
+    }
+}
+
+rule("Record new match time after score change")
+{
+
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Player Variable(Event Player, score) != Score Of(Event Player);
+    }
+
+    // Action count: 2
+    actions
+    {
+        Set Player Variable(Event Player, scoreTime, Match Time);
+        Set Player Variable(Event Player, score, Score Of(Event Player));
+    }
+}
+
+rule("Set New First Place")
+{
+
+    event
+    {
+        Ongoing - Global;
+    }
+
+    conditions
+    {
+        Or(And(Compare(Score Of(Global Variable(leader)), <, Score Of(First Of(Sorted Array(All Players(Team(All)), Multiply(-1, Score Of(Current Array Element)))))), Entity Exists(Global Variable(leader))), And(Compare(Global Variable(leader), ==, Null), Compare(Score Of(First Of(Sorted Array(All Players(Team(All)), Multiply(-1, Score Of(Current Array Element))))), >, 0))) == True;
+    }
+
+    // Action count: 11
+    actions
+    {
+        Stop Forcing Player Outlines(Global Variable(leader), All Players(Team(All)));
+        Wait(0.016, Ignore Condition);
+        Set Global Variable(leaderArray, Sorted Array(All Players(Team(All)), Multiply(-1, Score Of(Current Array Element))));
+        If(Compare(Count Of(Filtered Array(Global Variable(leaderArray), Compare(Score Of(Current Array Element), >=, Score Of(First Of(Global Variable(leaderArray)))))), >, 1));
+            Set Global Variable(leaderArray, Filtered Array(Global Variable(leaderArray), Compare(Score Of(Current Array Element), >=, Score Of(First Of(Global Variable(leaderArray))))));
+            Set Global Variable(leader, First Of(Sorted Array(Global Variable(leaderArray), Multiply(-1, Player Variable(Current Array Element, scoreTime)))));
+            Else;
+            Set Global Variable(leader, First Of(Global Variable(leaderArray)));
+        End;
+        Stop Forcing Player Outlines(Global Variable(leader), All Players(Team(All)));
+        Start Forcing Player Outlines(Global Variable(leader), All Players(Team(All)), True, Custom Color(255, 221, 0, 255), Always);
+    }
+}
+
+rule("Destroy Leader")
+{
+
+    event
+    {
+        Ongoing - Global;
+    }
+
+    conditions
+    {
+        Entity Exists(Global Variable(leader)) == False;
+    }
+
+    // Action count: 1
+    actions
+    {
+        Set Global Variable(leader, Null);
+    }
+}
+
+rule("Leader Setup New Player")
+{
+
+    event
+    {
+        Player Joined Match;
+        All;
+        All;
+    }
+
+    // Action count: 1
+    actions
+    {
+        Start Forcing Player Outlines(Global Variable(leader), Event Player, True, Custom Color(255, 221, 0, 255), Always);
+    }
+}
+
+rule("AI-specific Event Player Setup")
+{
+
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Is Dummy Bot(Event Player) == True;
+    }
+
+    // Action count: 1
+    actions
+    {
+        Start Forcing Dummy Bot Name(Event Player, Random Value In Array(Global Variable(botNames)));
+    }
+}
+
+rule("Spawn AI")
+{
+
+    event
+    {
+        Ongoing - Global;
+    }
+
+    conditions
+    {
+        Global Variable(spawnAI) == True;
+        Number Of Players(Team(All)) < Global Variable(aiNumber);
+    }
+
+    // Action count: 4
+    actions
+    {
+        Wait(1, Abort When False);
+        Create Dummy Bot(Hero(Ana), Team(All), -1, Nearest Walkable Position(Vector(Random Real(-20, 20), Empty Array, Random Real(-20, 20))), Subtract(Left, Left));
+        Set Player Variable(Last Created Entity, aimInaccuracy, Vector(Random Real(Multiply(-1, Global Variable(aimInaccuracyExtremes)), Global Variable(aimInaccuracyExtremes)), Empty Array, Random Real(Multiply(-1, Global Variable(aimInaccuracyExtremes)), Global Variable(aimInaccuracyExtremes))));
+        Loop If Condition Is True;
+    }
+}
+
+rule("Assembling Heroes AI Setup")
+{
+
+    event
+    {
+        Ongoing - Global;
+    }
+
+    conditions
+    {
+        Is Assembling Heroes == True;
+    }
+
+    // Action count: 2
+    actions
+    {
+        Set Player Variable(All Players(Team(All)), targetedPlayer, Null);
+        Set Player Variable(All Players(Team(All)), isChasing, False);
+    }
+}
+
+rule("Delete AI")
+{
+
+    event
+    {
+        Ongoing - Global;
+    }
+
+    conditions
+    {
+        Global Variable(spawnAI) == True;
+        Number Of Players(Team(All)) > Global Variable(aiNumber);
+        Count Of(Filtered Array(All Players(Team(All)), Is Dummy Bot(Current Array Element))) > 0;
+    }
+
+    // Action count: 4
+    actions
+    {
+        Wait(1, Abort When False);
+        Destroy Dummy Bot(Team(All), Slot Of(Random Value In Array(Filtered Array(All Players(Team(All)), Is Dummy Bot(Current Array Element)))));
+        Wait(1, Abort When False);
+        Loop If Condition Is True;
+    }
+}
+
+rule("Target Roam Subroutine")
+{
+
+    event
+    {
+        Subroutine;
+        targetRoam;
+    }
+
+    // Action count: 3
+    actions
+    {
+        Set Player Variable(Event Player, targetedPlayer, First Of(Sorted Array(Filtered Array(All Living Players(Team(All)), And(Not(Has Status(Current Array Element, Asleep)), Compare(Event Player, !=, Current Array Element))), Distance Between(Event Player, Current Array Element))));
+        Start Facing(Event Player, Direction Towards(Event Player, Add(Add(Player Variable(Event Player, targetedPlayer), Multiply(Velocity Of(Player Variable(Event Player, targetedPlayer)), Square Root(Divide(Raise To Power(Distance Between(Event Player, Player Variable(Event Player, targetedPlayer)), 2), Subtract(3600, Raise To Power(Speed Of(Player Variable(Event Player, targetedPlayer)), 2)))))), Player Variable(Event Player, aimInaccuracy))), 800, To World, Direction And Turn Rate);
+        Set Player Variable(Event Player, aimInaccuracy, Vector(Random Real(Multiply(-1, Global Variable(aimInaccuracyExtremes)), Global Variable(aimInaccuracyExtremes)), 0, Random Real(Multiply(-1, Global Variable(aimInaccuracyExtremes)), Global Variable(aimInaccuracyExtremes))));
+    }
+}
+
+rule("Reset Player Target on Spawn")
+{
+
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Global Variable(spawnAI) == True;
+        Is Dummy Bot(Event Player) == True;
+        Is Alive(Event Player) == True;
+        Has Spawned(Event Player) == True;
+    }
+
+    // Action count: 1
+    actions
+    {
+        Call Subroutine(targetRoam);
+    }
+}
+
+rule("Roam")
+{
+
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Global Variable(spawnAI) == True;
+        Is Dummy Bot(Event Player) == True;
+        Player Variable(Event Player, isChasing) == False;
+        Has Status(Event Player, Asleep) == False;
+    }
+
+    // Action count: 12
+    actions
+    {
+        If(Compare(Global Variable(willRoam), ==, True));
+            Start Throttle In Direction(Event Player, Vector(Random Real(-1, 1), Empty Array, Random Real(-1, 1)), 1, To World, Replace Existing Throttle, Direction And Magnitude);
+            Else;
+            Stop Throttle In Direction(Event Player);
+        End;
+        If(And(Compare(Random Integer(0, 5), <=, 3), Compare(Global Variable(willJump), ==, True)));
+            Start Holding Button(Event Player, Button(Jump));
+            Wait(0.016, Ignore Condition);
+            Stop Holding Button(Event Player, Button(Jump));
+        End;
+        Wait(0.7, Abort When False);
+        Loop If Condition Is True;
+    }
+}
+
+rule("Target Player while Roaming")
+{
+
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Global Variable(spawnAI) == True;
+        Is Dummy Bot(Event Player) == True;
+        Player Variable(Event Player, isChasing) == False;
+        Has Status(Event Player, Asleep) == False;
+        Player Variable(Event Player, playersCarried) == Empty Array;
+    }
+
+    // Action count: 3
+    actions
+    {
+        Call Subroutine(targetRoam);
+        Wait(5, Abort When False);
+        Loop;
+    }
+}
+
+rule("Shoot sleep")
+{
+
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Global Variable(spawnAI) == True;
+        Is Dummy Bot(Event Player) == True;
+        Player Variable(Event Player, isChasing) == False;
+        Ability Cooldown(Event Player, Button(Ability 1)) == 0;
+        Has Status(Event Player, Asleep) == False;
+        Global Variable(willAttackPlayers) == True;
+    }
+
+    // Action count: 7
+    actions
+    {
+        If(Compare(Random Integer(0, 1), ==, 1));
+            Start Holding Button(Event Player, Button(Ability 1));
+            Wait(0.016, Ignore Condition);
+            Stop Holding Button(Event Player, Button(Ability 1));
+        End;
+        Wait(1, Ignore Condition);
+        Loop If Condition Is True;
+    }
+}
+
+rule("Target Sleeping Player")
+{
+
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Global Variable(spawnAI) == True;
+        Is Dummy Bot(Event Player) == True;
+        Has Status(Player Variable(Event Player, targetedPlayer), Asleep) == True;
+        Player Variable(Event Player, playersCarried) == Empty Array;
+        Global Variable(willAttackPlayers) == True;
+    }
+
+    // Action count: 3
+    actions
+    {
+        Set Player Variable(Event Player, isChasing, True);
+        Start Throttle In Direction(Event Player, Direction Towards(Event Player, Player Variable(Event Player, targetedPlayer)), 1, To World, Replace Existing Throttle, Direction And Magnitude);
+        Communicate(Event Player, Hello);
+    }
+}
+
+rule("Launch Player")
+{
+
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Global Variable(spawnAI) == True;
+        Is Dummy Bot(Event Player) == True;
+        Player Variable(Event Player, isChasing) == True;
+        Or(Or(Or(Compare(X Component Of(Position Of(Event Player)), >=, Subtract(17, Divide(Multiply(Global Variable(throwStrength), 0.4), 10))), Compare(X Component Of(Position Of(Event Player)), <=, Add(-17, Divide(Multiply(Global Variable(throwStrength), 0.4), 10)))), Compare(Z Component Of(Position Of(Event Player)), >=, Subtract(17, Divide(Multiply(Global Variable(throwStrength), 0.4), 10)))), Compare(Z Component Of(Position Of(Event Player)), <=, Add(-17, Divide(Multiply(Global Variable(throwStrength), 0.4), 10)))) == True;
+        Count Of(Player Variable(Event Player, playersCarried)) > 0;
+        Global Variable(willAttackPlayers) == True;
+    }
+
+    // Action count: 7
+    actions
+    {
+        Start Holding Button(Event Player, Button(Jump));
+        Wait(0.5, Ignore Condition);
+        Start Holding Button(Event Player, Button(Secondary Fire));
+        Wait(0.016, Ignore Condition);
+        Stop Holding Button(Event Player, Button(Secondary Fire));
+        Start Holding Button(Event Player, Button(Jump));
+        Communicate(Event Player, Goodbye);
+    }
+}
+
+rule("Pick Up Player")
+{
+
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Global Variable(spawnAI) == True;
+        Is Dummy Bot(Event Player) == True;
+        Player Variable(Event Player, isChasing) == True;
+        Count Of(Filtered Array(All Living Players(Team(All)), And(Compare(Distance Between(Current Array Element, Event Player), <=, Subtract(Global Variable(pickupRadius), Multiply(Global Variable(pickupRadius), 0.333))), Has Status(Current Array Element, Asleep)))) > 0;
+        Player Variable(Event Player, playersCarried) == Empty Array;
+        Global Variable(willAttackPlayers) == True;
+    }
+
+    // Action count: 18
+    actions
+    {
+        Stop Forcing Throttle(Event Player);
+        If(Compare(Random Real(0, 1), >, 0.8));
+            Wait(0.25, Ignore Condition);
+            Stop Throttle In Direction(Event Player);
+            Start Holding Button(Event Player, Button(Crouch));
+            Wait(0.1, Ignore Condition);
+            Stop Holding Button(Event Player, Button(Crouch));
+            Wait(0.15, Ignore Condition);
+            Start Holding Button(Event Player, Button(Crouch));
+            Wait(0.1, Ignore Condition);
+            Stop Holding Button(Event Player, Button(Crouch));
+            Wait(0.1, Ignore Condition);
+        End;
+        Start Holding Button(Event Player, Button(Primary Fire));
+        Wait(0.016, Ignore Condition);
+        Stop Holding Button(Event Player, Button(Primary Fire));
+        Wait(0.25, Ignore Condition);
+        Loop If Condition Is True;
+    }
+}
+
+rule("Move to Edge With Player")
+{
+
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Global Variable(spawnAI) == True;
+        Is Dummy Bot(Event Player) == True;
+        Player Variable(Event Player, isChasing) == True;
+        Count Of(Player Variable(Event Player, playersCarried)) > 0;
+        Global Variable(willAttackPlayers) == True;
+    }
+
+    // Action count: 4
+    actions
+    {
+        Start Throttle In Direction(Event Player, Direction Towards(Event Player, First Of(Sorted Array(Global Variable(positionArray), Distance Between(Event Player, Current Array Element)))), 1, To World, Replace Existing Throttle, Direction And Magnitude);
+        Set Player Variable(Event Player, targetedPlayer, First Of(Sorted Array(Global Variable(positionArray), Distance Between(Event Player, Current Array Element))));
+        Wait(3, Ignore Condition);
+        Loop If Condition Is True;
+    }
+}
+
+rule("Death Reset")
+{
+
+    event
+    {
+        Player died;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Global Variable(spawnAI) == True;
+        Is Dummy Bot(Event Player) == True;
+    }
+
+    // Action count: 3
+    actions
+    {
+        Set Player Variable(Event Player, targetedPlayer, Null);
+        Set Player Variable(Event Player, isChasing, False);
+        Stop Forcing Throttle(Event Player);
+    }
+}
+
+rule("Sleep Reset")
+{
+
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Global Variable(spawnAI) == True;
+        Is Dummy Bot(Event Player) == True;
+        Has Status(Event Player, Asleep) == True;
+    }
+
+    // Action count: 4
+    actions
+    {
+        Stop Facing(Event Player);
+        Set Player Variable(Event Player, targetedPlayer, Null);
+        Set Player Variable(Event Player, isChasing, False);
+        Stop Forcing Throttle(Event Player);
+    }
+}
+
+rule("Escape")
+{
+
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Global Variable(spawnAI) == True;
+        Is Dummy Bot(Event Player) == True;
+        Player Variable(Event Player, thrower) != Null;
+        Has Status(Event Player, Asleep) == False;
+        Global Variable(willEscape) == True;
+    }
+
+    // Action count: 3
+    actions
+    {
+        Call Subroutine(autoEscape);
+        Wait(0.25, Ignore Condition);
+        Loop If Condition Is True;
+    }
+}
+
+rule("Ultimate usage")
+{
+
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Global Variable(spawnAI) == True;
+        Is Dummy Bot(Event Player) == True;
+        Ultimate Charge Percent(Event Player) == 100;
+        Is Alive(Event Player) == True;
+        Has Spawned(Event Player) == True;
+        Global Variable(willUlt) == True;
+    }
+
+    // Action count: 3
+    actions
+    {
+        Start Holding Button(Event Player, Button(Ultimate));
+        Wait(0.016, Ignore Condition);
+        Stop Holding Button(Event Player, Button(Ultimate));
+    }
+}
+
+rule("Retreat from map edge")
+{
+
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Global Variable(spawnAI) == True;
+        Is Dummy Bot(Event Player) == True;
+        Or(Or(Or(Compare(Add(X Component Of(Position Of(Event Player)), 2), >=, 21), Compare(Subtract(X Component Of(Position Of(Event Player)), 2), <=, -21)), Compare(Add(Z Component Of(Position Of(Event Player)), 2), >=, 21)), Compare(Subtract(Z Component Of(Position Of(Event Player)), 2), <=, -21)) == True;
+    }
+
+    // Action count: 5
+    actions
+    {
+        Start Throttle In Direction(Event Player, Direction Towards(Event Player, Subtract(Left, Left)), 1, To World, Replace Existing Throttle, Direction And Magnitude);
+        Set Player Variable(Event Player, isChasing, True);
+        Wait(0.7, Ignore Condition);
+        Loop If Condition Is True;
+        Set Player Variable(Event Player, isChasing, False);
+    }
+}
+
+rule("Stop Chasing After Removing Carried Players")
+{
+
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Global Variable(spawnAI) == True;
+        Is Dummy Bot(Event Player) == True;
+        Player Variable(Event Player, playersCarried) == Empty Array;
+    }
+
+    // Action count: 1
+    actions
+    {
+        Set Player Variable(Event Player, isChasing, False);
+    }
+}
+
+rule("Stop Staring at Dead Target")
+{
+
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Global Variable(spawnAI) == True;
+        Is Dummy Bot(Event Player) == True;
+        Y Component Of(Player Variable(Event Player, targetedPlayer)) <= -1;
+        Entity Exists(Player Variable(Event Player, targetedPlayer)) == True;
+        Player Variable(Event Player, isChasing) == True;
+    }
+
+    // Action count: 1
+    actions
+    {
+        Set Player Variable(Event Player, isChasing, False);
+    }
+}
+
+rule("Stop targeting carried or awakening player")
+{
+
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Global Variable(spawnAI) == True;
+        Is Dummy Bot(Event Player) == True;
+        Or(Compare(Player Variable(Player Variable(Event Player, targetedPlayer), thrower), !=, Null), Compare(Has Status(Player Variable(Event Player, targetedPlayer), Asleep), ==, False)) == True;
+        Entity Exists(Player Variable(Event Player, targetedPlayer)) == True;
+    }
+
+    // Action count: 1
+    actions
+    {
+        Set Player Variable(Event Player, isChasing, False);
+    }
+}
+
+rule("Pick up players while going to edge")
+{
+
+    event
+    {
+        Ongoing - Each Player;
+        All;
+        All;
+    }
+
+    conditions
+    {
+        Global Variable(spawnAI) == True;
+        Is Dummy Bot(Event Player) == True;
+        Player Variable(Event Player, isChasing) == True;
+        Count Of(Filtered Array(All Living Players(Team(All)), And(And(Compare(Distance Between(Current Array Element, Event Player), <=, Subtract(Global Variable(pickupRadius), Multiply(Global Variable(pickupRadius), 0.333))), Has Status(Current Array Element, Asleep)), Compare(Player Variable(Current Array Element, thrower), ==, Null)))) > 0;
+        Entity Exists(Player Variable(Event Player, targetedPlayer)) == False;
+        Global Variable(willAttackPlayers) == True;
+    }
+
+    // Action count: 3
+    actions
+    {
+        Start Holding Button(Event Player, Button(Primary Fire));
+        Wait(0.016, Ignore Condition);
+        Stop Holding Button(Event Player, Button(Primary Fire));
+    }
+}

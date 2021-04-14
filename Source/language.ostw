@@ -1,0 +1,92 @@
+globalvar define stringCreator;
+globalvar define stringVersion;
+globalvar define stringDiscordLink;
+globalvar define stringCode;
+globalvar define stringGHLink;
+globalvar define stringProjectLink;
+globalvar define stringLeft;
+globalvar define stringRight;
+globalvar define stringObjective;
+globalvar define stringPick;
+globalvar define stringEscape;
+globalvar define stringDiscord;
+globalvar define stringSubtitle;
+globalvar define stringProject;
+globalvar define stringUltEscape;
+globalvar define stringTranslation;
+globalvar define stringGraspEscape;
+globalvar define stringTitle;
+globalvar define stringAnaBotSpawn;
+globalvar define stringGH;
+
+globalvar define botNames;
+
+
+//These strings are always the same no matter the language.
+rule: "Constant Strings" -99
+{
+    stringCreator = "Block#12425";
+    stringVersion = "1.4.2";
+    stringDiscordLink = "discord.gg/CSKSVDH";
+    stringProjectLink = "workshop.codes/QKTTV";
+    stringCode = "Code: QKTTV";
+    stringGHLink = "grandeurhammers.com/discord";
+}
+
+//Uses built-in hero names to determine what language the lobby creator is using.
+void languageDetection() "Language Detection"
+{
+    if (<"<0>", Hero.Ana> == "Ana")
+    {
+        englishStrings();
+    }
+    else if (<"<0>", Hero.Ana> == "安娜")
+    {
+        simplifiedChineseStrings();
+    }
+    else
+    {
+        englishStrings();
+    }
+}
+
+
+void englishStrings() "English" 
+{
+    stringSubtitle = <"Created by: <0>. Version: <1>", stringCreator, stringVersion>;
+    stringLeft = " to pick up sleeping player";
+    stringRight = " to yeet carried player";
+    stringObjective = "Yeet sleeping players off the island!";
+    stringPick = "Picked up";
+    stringEscape = " to escape her grasp!";
+    stringDiscord = <"Join the discord: <0> (All caps)", stringDiscordLink>;
+    stringProject = <"Project: <0>", stringProjectLink>;
+    stringUltEscape = " to wake up and get a speed boost!";
+    stringTranslation = "";
+    stringGraspEscape = "escaped!";
+    stringTitle = "Sleep 'N Yeet";
+    stringAnaBotSpawn = <"<0> Bots Enabled. Current count:", AbilityIconString(Hero.Echo, Button.Ultimate)>;
+    stringGH = <"<0> Certified by Grandeur Hammers", AbilityIconString(Hero.Torbjorn, Button.Ability2)>;
+    botNames = ["Nuts", "Bolts", "Smith", "Oracle", "Wheatley", "Hello World", "0011011000111001", "M. Zuckerberg", "Spyware", "Terminator", "REX", "Curly", 
+                "Quote", "Scrum", "Aimbot", "ROB", "Alexa", "Siri", "Fifteen", "Prime", "Clank", "EVE", "Athena", "AAA", "Anubis", "Rodney", "Virus", "Trojan",
+                "Middleman", "DDOS", "Kernel", "Tux", "Wilbur", "Echo"];
+}
+
+void simplifiedChineseStrings() "Simplified CN (Thanks to Zesty for translation)"
+{
+    stringSubtitle = <"由<0>制作。版本：<1>", stringCreator, stringVersion>;
+    stringLeft = " 捡起沉睡的玩家";
+    stringRight = " 抛投抓住的玩家";
+    stringObjective = "把睡着的玩家丢出小岛！";
+    stringPick = "捡起";
+    stringEscape = "：逃离她的魔爪！";
+    stringDiscord = <"加入Discord：<0>（全大写）", stringDiscordLink>;
+    stringProject = <"项目：<0>（全小写）", stringProjectLink>;
+    stringUltEscape = " 获得加速，如果是沉睡状态则将睡醒！";
+    stringTranslation = "由Zesty#51453翻译";
+    stringGraspEscape = "逃脱了！";
+    stringTitle = "梦中丢人";
+    stringAnaBotSpawn = <"<0> 启用了安娜机器人。目前数量：", AbilityIconString(Hero.Torbjorn, Button.Ability2)>;
+    stringGH = <"<0> 由Grandeur Hammers认证", AbilityIconString(Hero.Torbjorn, Button.Ability2)>;
+    botNames = ["安娜"];
+}

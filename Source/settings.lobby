@@ -1,0 +1,48 @@
+{
+  "Lobby": {
+    "Allow Players Who Are In Queue": true,
+    "Match Voice Chat": true,
+    "Max Spectators": 6,
+    "Return To Lobby": "Never"
+  },
+  "Modes": {
+    "All": {
+      "Allow Hero Switching": false,
+      "Game Mode Start": "Immediately",
+      "Hero Limit": "Off",
+      "Respawn Time Scalar": 20.0
+    },
+    "Deathmatch": {
+      "Enabled Maps": [
+        "Workshop Island",
+        "Workshop Island (Night)",
+        "Workshop Chamber"
+      ]
+    }
+  },
+  "Heroes": {
+    "General": {
+      "Enabled Heroes": [
+        "Ana"
+      ],
+      "Ana": {
+        "Biotic Grenade": false,
+        "Damage Dealt": 10.0,
+        "Movement Speed": 110.0,
+        "No Scope": true,
+        "Primary Fire": false,
+        "Quick Melee": false,
+        "Ultimate Generation - Combat (Nano Boost)": 0.0,
+        "Ultimate Generation - Passive (Nano Boost)": 0.0,
+        "Ultimate Generation (Nano Boost)": 10.0
+      }
+    }
+  },
+  "Extensions": 
+  {
+    "Beam Effects": true,
+    "Buff Status Effects": true,
+    "Kinetic Explosion Effects": true
+  },
+  "Description": "Sleep 'N Yeet! By: Block#12425. Version: 1.4.2. Use Workshop Settings to change the game! Additional language support: Simplified CN."
+}

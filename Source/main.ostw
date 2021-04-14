@@ -1,0 +1,118 @@
+//Main File. Compile here.
+import "settings.lobby";
+import "language.ostw";
+import "ana.ostw";
+import "ai.ostw";
+
+globalvar define isDebug; //Workshop Setting. True if Debug HUD is enabled.
+globalvar define titleColorR; //Color variable. Pertains to the red value in RGBA.
+globalvar define titleColorG; //Color variable. Pertains to the green value in RGBA.
+globalvar define titleColorB; //Color variable. Pertains to the blue value in RGBA.
+globalvar define y; //Numerical value. Y value of vectors in the spawnPositionArray.
+globalvar define spawnPositionArray; //Vector array. Contains positions that players will be teleported to.
+
+//Actions taken the moment the lobby starts.
+rule: "Initial Setup"
+{
+    isDebug = WorkshopSettingToggle("Debug", "Enable Debug HUD", false, 0);
+    titleColorR = 255;
+    titleColorG = 0;
+    titleColorB = 0;
+    if (CurrentMap() == Map.Workshop_Chamber)
+    {
+        y = 46;
+    }
+    else
+    {
+        y = 0;
+    }
+    spawnPositionArray = [Vector(15, y, 15), Vector(10, y, 15), Vector(5, y, 15), Vector(0, y, 15), Vector(-5, y, 15), Vector(-10, y, 15), Vector(-15, y, 15), Vector(15, y, 10), Vector(15, y, 5), Vector(15, y, 0), Vector(15, y, -5), Vector(15, y, -10), Vector(15, y, -15), Vector(10, y, -15), Vector(5, y, -15), Vector(0, y, -15), Vector(-5, y, -15), Vector(-10, y, -15), Vector(-15, y, -15), Vector(-15, y, 10), Vector(-15, y, 5), Vector(-15, y, 0), Vector(-15, y, -5), Vector(-15, y, -10)];
+    hudCreation();
+    languageDetection();
+    effectCreation();
+    if (CurrentMap() == Map.Workshop_Chamber)
+    {
+        CreateBeamEffect(AllPlayers(Team.All), BeamType.GrappleBeam, Vector(21, 0, 21), Vector(21, -1000, 21), Color.White, EffectRev.VisibleTo);
+        CreateBeamEffect(AllPlayers(Team.All), BeamType.GrappleBeam, Vector(21, 0, -21), Vector(21, -1000, -21), Color.White, EffectRev.VisibleTo);
+        CreateBeamEffect(AllPlayers(Team.All), BeamType.GrappleBeam, Vector(-21, 0, 21), Vector(-21, -1000, 21), Color.White, EffectRev.VisibleTo);
+        CreateBeamEffect(AllPlayers(Team.All), BeamType.GrappleBeam, Vector(-21, 0, -21), Vector(-21, -1000, -21), Color.White, EffectRev.VisibleTo);
+    }
+    else if (CurrentMap() == Map.Workshop_Island_Night)
+    {
+        CreateEffect(AllPlayers(Team.All), Effect.Cloud, Color.White, Vector(0, -2, 0), 20, EffectRev.VisibleTo);
+    }
+    if (isDebug == true)
+    {
+        debug();
+    }
+    else
+    {
+        DisableInspectorRecording();
+    }
+}
+
+//Core HUD is created
+void hudCreation() "HUD Creation Subroutine"
+{
+    CreateHudText(AllPlayers(Team.All), null, null, stringProject, Location.Right, -0.99, null, null, Color.Green, HudTextRev.VisibleToAndString, Spectators.DefaultVisibility);
+    CreateHudText(AllPlayers(Team.All), null, null, stringCode, Location.Right, -0.9, null, null, CustomColor(titleColorR, titleColorG, titleColorB, 255), HudTextRev.VisibleToStringAndColor, Spectators.DefaultVisibility);
+    CreateHudText(AllPlayers(Team.All), null, null, <" \n<0>", stringGH>, Location.Right, -0.89, null, null, Color.Yellow, HudTextRev.VisibleToAndString, Spectators.DefaultVisibility);
+    CreateHudText(AllPlayers(Team.All), null, stringTranslation, null, Location.Right, -2, null, Color.White, null, HudTextRev.VisibleToAndString, Spectators.DefaultVisibility);
+    CreateHudText(AllPlayers(Team.All), null, null, stringGHLink, Location.Right, -0.88, null, null, Color.Yellow, HudTextRev.VisibleToAndString, Spectators.DefaultVisibility);
+    CreateHudText(FilteredArray(AllPlayers(Team.All), UltimateChargePercent(ArrayElement()) == 100), null, null, <"<0><1>", InputBindingString(Button.Ultimate), stringUltEscape>, Location.Top, 1.2, null, null, CustomColor(titleColorR, titleColorG, titleColorB, 255), HudTextRev.VisibleToStringAndColor, Spectators.VisibleNever);
+    CreateHudText(FilteredArray(AllPlayers(Team.All), Not(HasStatus(ArrayElement(), Status.Asleep))), null, null, <"<0><1>", InputBindingString(Button.PrimaryFire), stringLeft>, Location.Top, 1, null, null, Color.Aqua, HudTextRev.VisibleToAndString, Spectators.VisibleNever);
+    CreateHudText(FilteredArray(AllPlayers(Team.All), Not(HasStatus(ArrayElement(), Status.Asleep))), null, null, <"<0><1>", InputBindingString(Button.SecondaryFire), stringRight>, Location.Top, 1.1, null, null, Color.Orange, HudTextRev.VisibleToAndString, Spectators.VisibleNever);
+    CreateHudText(FilteredArray(AllPlayers(Team.All), ArrayElement().thrower.playersCarried == ArrayElement() && Not(HasStatus(ArrayElement(), Status.Asleep)) && canAutoEscape == false), null, null, <"<0><1>", InputBindingString(Button.Jump), stringEscape>, Location.Top, 1.3, null, null, Color.Yellow, HudTextRev.VisibleToAndString, Spectators.DefaultVisibility);
+}
+
+//Other, global effects that are not part of the HUD are created here.
+void effectCreation() "Other Effect Creation"
+{
+    CreateInWorldText(FilteredArray(AllPlayers(Team.All), leader != null && ArrayElement() != leader && IsAlive(leader)), "#1", leader, 2, Clipping.ClipAgainstSurfaces, InworldTextRev.VisibleToAndPosition, CustomColor(255, 221, 0, 255), Spectators.DefaultVisibility);
+    CreateInWorldText(AllPlayers(Team.All), stringTitle, Vector(0, 20 + y, 113), 4, Clipping.ClipAgainstSurfaces, InworldTextRev.VisibleToStringAndColor, CustomColor(titleColorR, titleColorG, titleColorB, 255), Spectators.DefaultVisibility);
+    CreateInWorldText(AllPlayers(Team.All), stringSubtitle, Vector(0, 15 + y, 113), 2, Clipping.ClipAgainstSurfaces, InworldTextRev.VisibleToAndString, Color.White, Spectators.DefaultVisibility);
+}
+
+//Creates a debug HUD.
+void debug() "Debug Mode Setup"
+{
+    CreateHudText(HostPlayer(), ServerLoadAverage(), "Server Load Average", null, Location.Left, 0, Color.White, Color.White, Color.White, HudTextRev.VisibleToAndString, Spectators.DefaultVisibility);
+    CreateHudText(HostPlayer(), PositionOf(HostPlayer()), "Host Player Position", null, Location.Left, 1, Color.White, Color.White, Color.White, HudTextRev.VisibleToAndString, Spectators.DefaultVisibility);
+}
+
+//During player spawn, they are teleported to a position in the spawnPositionArray(). Also sets up eventPlayer.ready.
+rule: "Player Teleport"
+Event.OngoingPlayer
+if (HasSpawned(EventPlayer()) == true)
+if (IsAlive(EventPlayer()) == true)
+{
+    MinWait();
+    Teleport(EventPlayer(), SortedArray(RandomizedArray(spawnPositionArray), CountOf(PlayersWithinRadius(ArrayElement(), 10, Team.All, RadiusLOS.Off))));
+    MinWait();
+    SetFacing(EventPlayer(), DirectionTowards(EventPlayer(), Vector(0, y + EyePosition(EventPlayer()) - PositionOf(EventPlayer()), 0)), Relative.ToWorld);
+    ready = true;
+}
+
+//Chases the three color variables to produce a proper looking rainbow HUD effect.
+rule: "Chase Color"
+{
+    ChaseVariableAtRate(titleColorB, 255, 450, RateChaseReevaluation.DestinationAndRate);
+    WaitUntil(titleColorB == 255, 9999);
+    StopChasingVariable(titleColorB);
+    ChaseVariableAtRate(titleColorR, 0, 450, RateChaseReevaluation.DestinationAndRate);
+    WaitUntil(titleColorR == 0, 9999);
+    StopChasingVariable(titleColorR);
+    ChaseVariableAtRate(titleColorG, 255, 450, RateChaseReevaluation.DestinationAndRate);
+    WaitUntil(titleColorG == 255, 9999);
+    StopChasingVariable(titleColorG);
+    ChaseVariableAtRate(titleColorB, 0, 450, RateChaseReevaluation.DestinationAndRate);
+    WaitUntil(titleColorB == 0, 9999);
+    StopChasingVariable(titleColorB);
+    ChaseVariableAtRate(titleColorR, 255, 450, RateChaseReevaluation.DestinationAndRate);
+    WaitUntil(titleColorR == 255, 9999);
+    StopChasingVariable(titleColorR);
+    ChaseVariableAtRate(titleColorG, 0, 450, RateChaseReevaluation.DestinationAndRate);
+    WaitUntil(titleColorG == 0, 9999);
+    StopChasingVariable(titleColorG);
+    Loop();
+}

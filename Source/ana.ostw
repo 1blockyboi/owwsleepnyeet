@@ -1,0 +1,336 @@
+
+
+import "language.ostw";
+globalvar define canAutoEscape; //Workshop Setting. Determines if players can auto-escape grasp instead of manually pressing space.
+globalvar define sleepDuration; //Workshop Setting. Determines how long a sleep duration lasts.
+globalvar define ultPercentage; //Workshop Setting. Determines how much ult charge a player receives when they successfully eliminate a player.
+globalvar define pickupRadius; //Workshop Setting. Determines how long the pickup radius is for a sleeping player.
+globalvar define positionArray; //Vector Array. The positions AI can refer to.
+globalvar define throwStrength; //Workshop Setting. Determines how "strong" a player throw is.
+globalvar define scale; //Workshop Setting. The scale of the players.
+globalvar define moveSpeed; //Workshop Setting. Determines the move speed of the player (multiplied by the move speed set in the lobby. Default: 100%*120%)
+globalvar define sleepCD; //Workshop Setting. Determines how long the sleep dart cooldown is.
+globalvar define jumpSpeed; //Workshop Setting. Determines how "fast a jump is." I.e. higher values means bigger jump.
+globalvar define leader; //Player. It is set to whoever the current lobby leader is aka first place.
+globalvar define leaderArray; //Player array. Is used to sort the players by score, to determine who is at the top of the leaderboard.
+playervar define playersCarried; //Player array. Contains the value of every player currently carried by EventPlayer()
+playervar define thrower; //Player. Contains the player that the EventPlayer() is currently attached to.
+playervar define i; //Numerical value. Used for a for loop.
+playervar define j; //Numerical value. Used for a for loop.
+playervar define ready; //Boolean value. When true, player can be killed when below the y value in main. If false, they are not killed.
+playervar define scoreTime; //Numerical value. Used by EventPlayer() to record the time when their score last changed.
+playervar define score; //Numerical value. Last recorded score of EventPlayer(). Used to compare actual score to see if they match.
+playervar define sprintEffectId; //Effect ID. Used by EventPlayer to allow for the Soldier: 76 Sprint effect to be properly deleted.
+
+//Actions taken when EventPlayer() joins the game.
+rule: "New Player Setup"
+Event.OngoingPlayer
+if (IsGameInProgress() == true)
+{
+    SetObjectiveDescription(EventPlayer(), stringObjective, HudTextRev.VisibleTo);
+    StartHealOverTime(EventPlayer(), EventPlayer(), 9999, 9999);
+    playersCarried = [];
+    StartScalingPlayer(EventPlayer(), scale / 100, false);
+    StartModifyingHeroVoiceLines(EventPlayer(), (scale - 100) / -180 + 1, false);
+    SetMoveSpeed(EventPlayer(), moveSpeed);
+    SetJumpVerticalSpeed(EventPlayer(), jumpSpeed);
+    scoreTime = MatchTime();
+    score = 0;
+    Wait();
+    CreateEffect(HasStatus(EventPlayer(), Status.Asleep) && EventPlayer().thrower == null ? AllPlayers(Team.All) : [], Effect.Ring, EventPlayer() != leader ? Color.Red : Color.Yellow, UpdateEveryFrame(PositionOf(EventPlayer())), pickupRadius, EffectRev.VisibleToPositionRadiusAndColor);
+}
+
+//Global actions taken when lobby is created.
+rule: "Ana Initial Setup" -98
+{
+    sleepDuration = WorkshopSettingReal("General", "Sleep Duration in Seconds (Default󠀺 5)", 5, 1, 10, 0);
+    ultPercentage = WorkshopSettingInteger("General", "Ultimate Percentage Added per elimination (Default󠀺 20%)", 20, 0, 100, 0);
+    pickupRadius = WorkshopSettingReal("General", "Pickup Radius in Meters (Default󠀺 1.5)", 1.5, 0.5, 20, 0);
+    canAutoEscape = WorkshopSettingToggle("General", "Auto escape from players (Default󠀺 disabled)", false, 0);
+    throwStrength = WorkshopSettingInteger("General", "Throw Strength Percentage (Default󠀺 100%)", 100, 25, 175, 0);
+    scale = WorkshopSettingReal("General", "Scale Percentage of Ana (Default󠀺 100%)", 100, 10, 500, 0);
+    moveSpeed = WorkshopSettingReal("General", "Move Speed Percentage of Ana (Default󠀺 100%)", 100, 10, 500, 0);
+    sleepCD = WorkshopSettingReal("General", "Sleep Dart Cooldown in Seconds (Default󠀺 2)", 2, 0, 20, 0);
+    jumpSpeed = WorkshopSettingReal("General", "Jump Speed Percentage (Default󠀺 100%)", 100, 0, 500, 0);
+    leader = null;
+
+}
+
+//Actions taken when the game enters the Assemblying Heroes phase.
+rule: "Assembling Heroes Setup"
+if (IsAssemblingHeroes() == true)
+{
+    AllPlayers(Team.All).playersCarried = null;
+    AllPlayers(Team.All).thrower = null;
+    DetachPlayers(AllPlayers(Team.All));
+    SetMoveSpeed(AllPlayers(Team.All), 100);
+    SetMatchTime(10);
+}
+
+//When the conditions are fulfilled, the EventPlayer() picks up another sleeping player. Values are set and effects are played.
+rule: "Pickup player"
+Event.OngoingPlayer
+if (IsButtonHeld(EventPlayer(), Button.PrimaryFire) == true)
+if (HasStatus(EventPlayer(), Status.Asleep) == false)
+if (EntityExists(FirstOf(SortedArray(FilteredArray(AllPlayers(Team.All), HasStatus(ArrayElement(), Status.Asleep) && ArrayElement() != EventPlayer() && DistanceBetween(EventPlayer(), ArrayElement()) <= pickupRadius && Not(EntityExists(ArrayElement().thrower)) && IsOnGround(ArrayElement())), DistanceBetween(EventPlayer(), ArrayElement())))) == true)
+{
+    ModifyVariable(playersCarried, Operation.AppendToArray, FirstOf(SortedArray(FilteredArray(AllPlayers(Team.All), HasStatus(ArrayElement(), Status.Asleep) && ArrayElement() != EventPlayer() && thrower == null), DistanceBetween(ArrayElement(), EventPlayer()))));
+    LastOf(playersCarried).thrower = EventPlayer();
+    AttachPlayers(LastOf(playersCarried), EventPlayer(), Vector(0, (2 + IndexOfArrayValue(playersCarried, LastOf(playersCarried))) * scale / 100, 0));
+    PlayEffect(EventPlayer(), PlayEffect.BuffImpactSound, Color.White, EventPlayer(), 200);
+    SmallMessage(EventPlayer(), <"<0> <1>!", stringPick, LastOf(playersCarried)>);
+    Wait(0.25, WaitBehavior.IgnoreCondition);
+}
+
+//When the EventPlayer() is thrown, and touches the ground (I.e. did not die from a fall), this is run to properly reset EventPlayer().thrower.
+rule: "Reset Thrower"
+Event.OngoingPlayer
+if (IsOnGround(EventPlayer()) == true)
+if (IsTrueForAll(thrower.playersCarried, ArrayElement() != EventPlayer()) == true)
+{
+    Wait(0.5, WaitBehavior.AbortWhenFalse); //If the player brushes against a corner to slides a bit, and resumes falling, this window prevents the kill credit from being lost.
+    thrower = null;
+}
+
+//If EventPlayer() is slept while carrying players, these actions are taken.
+rule: "Sleep Setup With Player"
+Event.OngoingPlayer
+if (HasStatus(EventPlayer(), Status.Asleep) == true)
+if (CountOf(playersCarried) > 0)
+{
+    if (CountOf(playersCarried) > 0)
+    {
+        DetachPlayers(FirstOf(playersCarried));
+        FirstOf(playersCarried).thrower = null;
+        ModifyVariable(playersCarried, Operation.RemoveFromArrayByIndex, 0);
+    }
+}
+
+//If EventPlayer() is slept, these actions are taken. Separation from the previous rule optimizes certain situations.
+rule: "Sleep Setup"
+Event.OngoingPlayer
+if (HasStatus(EventPlayer(), Status.Asleep) == true)
+{
+    SetAbilityCooldown(EventPlayer(), Button.Ability1, 0);
+}
+
+//If EventPlayer() is carrying player(s), they can throw them with the correct button press. 
+rule: "Throw player"
+Event.OngoingPlayer
+if (IsButtonHeld(EventPlayer(), Button.SecondaryFire) == true)
+if (HasStatus(EventPlayer(), Status.Asleep) == false)
+if (CountOf(playersCarried) > 0)
+{
+    while (playersCarried != [])
+    {
+        DetachPlayers(FirstOf(playersCarried));
+        ApplyImpulse(FirstOf(playersCarried), Vector(XOf(FacingDirectionOf(EventPlayer())), -0.1, ZOf(FacingDirectionOf(EventPlayer()))), throwStrength * 0.4, Relative.ToWorld, ContraryMotion.Cancel);
+        ModifyVariable(playersCarried, Operation.RemoveFromArrayByIndex, 0);
+        Wait(0.05, WaitBehavior.IgnoreCondition);
+    }
+}
+
+//If EventPlayer() wakes up and is still being carried, they can escape, taking anyone stacked above with them.
+rule: "Escape from grasp"
+Event.OngoingPlayer
+if (HasStatus(EventPlayer(), Status.Asleep) == false)
+if (IsButtonHeld(EventPlayer(), Button.Jump) == true)
+if (thrower != null)
+if (IsTrueForAny(thrower.playersCarried, ArrayElement() == EventPlayer()) == true)
+{
+    DetachPlayers(EventPlayer());
+    i = IndexOfArrayValue(thrower.playersCarried, EventPlayer());
+    SmallMessage(thrower, <"<0> <1>", EventPlayer(), stringGraspEscape>);
+    ModifyVariable(thrower.playersCarried, Operation.RemoveFromArrayByIndex, i);
+    while (CountOf(thrower.playersCarried) >= i + 1)
+    {
+        # Sometimes the array has a player that does not exist and/or by the time the small message is sent, player value is lost. This check will prevent a weird small message from being sent.
+        if (thrower.playersCarried[i] != null)
+        {
+            SmallMessage(thrower, <"<0> <1>", thrower.playersCarried[i], stringGraspEscape>);
+        }
+        DetachPlayers(thrower.playersCarried[i]);
+        thrower.playersCarried[i].thrower = null;
+        ModifyVariable(thrower.playersCarried, Operation.RemoveFromArrayByIndex, i);
+        Wait(0.05, WaitBehavior.IgnoreCondition);
+    }
+    thrower = null;
+}
+
+//When EventPlayer() falls below the y threshold, they will die.
+rule: "Too Far Gone kill credit"
+Event.OngoingPlayer
+if (YOf(PositionOf(EventPlayer())) < (CurrentMap() == Map.Workshop_Chamber ? 41 : -5))
+if (ready != false)
+{
+    Kill(EventPlayer(), thrower);
+    ready = false;
+    SetUltimateCharge(thrower, UltimateChargePercent(thrower) + ultPercentage);
+    Wait(0.25, WaitBehavior.IgnoreCondition);
+    playersCarried = [];
+    thrower = null;
+}
+
+//Actions taken when ult is activated.
+rule: "Using Ultimate"
+Event.OngoingPlayer
+if (IsUsingUltimate(EventPlayer()) == true)
+{
+    SetMoveSpeed(EventPlayer(), moveSpeed * 1.4);
+    PlayEffect(AllPlayers(Team.All), PlayEffect.BastionTankCannonExplosionEffect, Color.White, EventPlayer(), 5);
+    CreateEffect(AllPlayers(Team.All), Effect.Soldier76SprintingEffect, Color.White, EventPlayer(), 1, EffectRev.VisibleToPositionAndRadius);
+    sprintEffectId = LastCreatedEntity();
+}
+
+//Actions taken after the ult ends.
+rule: "Is not using Ultimate"
+Event.OngoingPlayer
+if (IsUsingUltimate(EventPlayer()) == false)
+{
+    SetMoveSpeed(EventPlayer(), moveSpeed);
+    DestroyEffect(sprintEffectId);
+}
+
+//If the ultimate button is pressed while asleep, this will wake up the player and automatically activate ultimate.
+rule: "Ult Cancels Sleep"
+Event.OngoingPlayer
+if (HasStatus(EventPlayer(), Status.Asleep) == true)
+if (IsButtonHeld(EventPlayer(), Button.Ultimate) == true)
+if (UltimateChargePercent(EventPlayer()) == 100)
+{
+    ClearStatus(EventPlayer(), Status.Asleep);
+    Wait(0.8, WaitBehavior.IgnoreCondition);
+    PressButton(EventPlayer(), Button.Ultimate);
+    Wait(1.2, WaitBehavior.IgnoreCondition);
+    //If the player somehow dies while waking up from these actions, this ensures they still lose ultimate charge from the attempt.
+    if (UltimateChargePercent(EventPlayer()) > 0 && Not(IsUsingUltimate(EventPlayer())))
+    {
+        SetUltimateCharge(EventPlayer(), 0);
+    }
+}
+
+//This check protects players that get focused slept. If they are, they will eventually be immune to everything for a few seconds to give themselves breathing room.
+rule: "Slept for too long"
+Event.OngoingPlayer
+if (HasStatus(EventPlayer(), Status.Asleep) == true)
+if (thrower == null)
+{
+    Wait(1, WaitBehavior.AbortWhenFalse);
+    Wait(1, WaitBehavior.AbortWhenFalse);
+    Wait(1, WaitBehavior.AbortWhenFalse);
+    Wait(1, WaitBehavior.AbortWhenFalse);
+    Wait(1, WaitBehavior.AbortWhenFalse);
+    Wait(1, WaitBehavior.AbortWhenFalse);
+    Wait(1, WaitBehavior.AbortWhenFalse);
+    Wait(1, WaitBehavior.AbortWhenFalse);
+    Wait(1, WaitBehavior.AbortWhenFalse);
+    Wait(1, WaitBehavior.AbortWhenFalse);
+    Wait(1, WaitBehavior.AbortWhenFalse);
+    Wait(1, WaitBehavior.AbortWhenFalse);
+    Wait(1, WaitBehavior.AbortWhenFalse);
+    Wait(1, WaitBehavior.AbortWhenFalse);
+    Wait(1, WaitBehavior.AbortWhenFalse);
+    SetStatus(EventPlayer(), null, Status.PhasedOut, 5);
+    ClearStatus(EventPlayer(), Status.Asleep);
+}
+
+//If autoEscape is enabled, these actions are ran when the conditions in another rule are satisfied.
+void autoEscape() "Auto Escape Subroutine"
+{
+    StartHoldingButton(EventPlayer(), Button.Jump);
+    MinWait();
+    StopHoldingButton(EventPlayer(), Button.Jump);
+}
+
+//The rule that uses the autoEscape() subroutine. Will constantly run if the conditions are right, until it is successful.
+rule: "Auto Escape"
+Event.OngoingPlayer
+if (canAutoEscape == true)
+if (EntityExists(thrower) == true)
+if (HasStatus(EventPlayer(), Status.Asleep) == false)
+{
+    autoEscape();
+}
+
+//Instead of letting the game handle the sleep status, this rule overwrites it with its own sleep duration when a sleep is applied.
+rule: "Manual Sleep"
+Event.OngoingPlayer
+if (HasStatus(EventPlayer(), Status.Asleep) == true)
+{
+    SetStatus(EventPlayer(), null, Status.Asleep, sleepDuration);
+}
+
+//If a player in playersCarried disconnects, these actions ensure everything in the array.
+rule: "Entity Check EventPlayer().playersCarried"
+Event.OngoingPlayer
+if (CountOf(playersCarried) > 0)
+if (IsTrueForAny(playersCarried, Not(EntityExists(ArrayElement()))) == true)
+{
+    for (j = 0; CountOf(playersCarried); 1)
+    {
+        if (Not(EntityExists(playersCarried[j])))
+        {
+            ModifyVariable(playersCarried, Operation.RemoveFromArrayByIndex, j);
+        }
+    }
+}
+
+//If the thrower disconnects, this ensures that the players carried do not run into bugs with picking up other players.
+rule: "Entity Check EventPlayer().thrower"
+Event.OngoingPlayer
+if (EventPlayer().thrower != null)
+if (Not(EntityExists(EventPlayer().thrower)))
+{
+   EventPlayer().thrower = null;
+}
+ 
+//This applies a manual cooldown whenever the sleep dart is used.
+rule: "Sleep Dart Manual CD"
+Event.OngoingPlayer
+if (AbilityCooldown(EventPlayer(), Button.Ability1) > 0)
+{
+    SetAbilityCooldown(EventPlayer(), Button.Ability1, sleepCD);
+}
+
+//When EventPlayer() gets a new score, the scoreTime is set to the current match time. This is needed for leader determination.
+rule: "Record new match time after score change"
+Event.OngoingPlayer
+if (score != ScoreOf(EventPlayer()))
+{
+    scoreTime = MatchTime();
+    score = ScoreOf(EventPlayer());
+}
+
+//Actions take to setup a new leader.
+rule: "Set New First Place"
+if ((ScoreOf(leader) < ScoreOf(FirstOf(SortedArray(AllPlayers(Team.All), -1 * ScoreOf(ArrayElement())))) && EntityExists(leader) || leader == null && ScoreOf(FirstOf(SortedArray(AllPlayers(Team.All), -1 * ScoreOf(ArrayElement())))) > 0) == true)
+{
+    StopForcingPlayerOutlines(leader, AllPlayers(Team.All));
+    MinWait();
+    leaderArray = SortedArray(AllPlayers(Team.All), -1 * ScoreOf(ArrayElement()));
+    if (CountOf(FilteredArray(leaderArray, ScoreOf(ArrayElement()) >= ScoreOf(FirstOf(leaderArray)))) > 1)
+    {
+        leaderArray = FilteredArray(leaderArray, ScoreOf(ArrayElement()) >= ScoreOf(FirstOf(leaderArray)));
+        leader = FirstOf(SortedArray(leaderArray, -1 * ArrayElement().scoreTime));
+    }
+    else
+    {
+        leader = FirstOf(leaderArray);
+    }
+    StopForcingPlayerOutlines(leader, AllPlayers(Team.All));
+    StartForcingPlayerOutlines(leader, AllPlayers(Team.All), true, CustomColor(255, 221, 0, 255), OutlineType.Always);
+}
+
+//If the leader no longer exists, it is properly set to null so a new leader can be determined.
+rule: "Destroy Leader"
+if (EntityExists(leader) == false)
+{
+    leader = null;
+}
+
+//If a player joins, they get the proper outline set for the leader of the game.
+rule: "Leader Setup New Player"
+Event.OnPlayerJoin
+{
+    StartForcingPlayerOutlines(leader, EventPlayer(), true, CustomColor(255, 221, 0, 255), OutlineType.Always);
+}

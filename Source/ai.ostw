@@ -1,0 +1,345 @@
+import "ana.ostw";
+import "language.ostw";
+globalvar define aiNumber; //Workshop Setting. Determines how many AI are allowed at maximum.
+globalvar define aimInaccuracyExtremes; //Workshop Setting. Determines how inaccurate the AI can be from the initial prediction.
+globalvar define spawnAI; //Workshop Setting. Determines if the game will spawn AI.
+globalvar define willAttackPlayers; //Workshop Setting. Determines if AI will attempt to shoot sleep darts at other players.
+globalvar define willEscape; //Workshop Setting. Determines if AI will attempt to escape when they can.
+globalvar define willJump; //Workshop Setting. Determines if AI will jump when fighting someone.
+globalvar define willRoam; //Workshop Setting. Determines if the AI will walk around will fighting someone.
+globalvar define willUlt; //Workshop Setting. Determines if the AI will use their ult if they have it.
+
+playervar define targetedPlayer; //Player. The current player that the AI is attacking.
+playervar define isChasing; //Boolean. A state value. If false, it will attack players. When true, it will beeline to specific positions.
+playervar define aimInaccuracy; //Numerical value. Determines the current inaccuracy of the AI's aim.
+
+//The global actions taken when game is created.
+rule: "AI Initial Setup" -98
+{
+    spawnAI = WorkshopSettingToggle("Bots", "Bots Spawn", true, -2);
+    aiNumber = WorkshopSettingInteger("Bots", "Number of minimum required bots/players", 12, 0, 12, -1);
+    aimInaccuracyExtremes = WorkshopSettingReal("Bots", "Range of Aim Error", 2, 0, 10, 0);
+    # This array is used by the bots to find different spots on the map
+    positionArray = CurrentMap() == Map.Workshop_Chamber ? [Vector(27, 46, 0), Vector(27, 46, 13.5), Vector(27, 46, -13.5), Vector(-27, 46, 0), Vector(-27, 0, 13.5), Vector(-27, 46, -13.5), Vector(0, 46, 27), Vector(13.5, 46, 27), Vector(-27, 46, 27), Vector(0, 46, -27), Vector(13.5, 46, -27), Vector(-13.5, 46, -27)] : [Vector(25, 0, 0), Vector(25, 0, 12.5), Vector(25, 0, -12.5), Vector(-25, 0, 0), Vector(-25, 0, 12.5), Vector(-25, 0, -12.5), Vector(0, 0, 25), Vector(12.5, 0, 25), Vector(-25, 0, 25), Vector(0, 0, -25), Vector(12.5, 0, -25), Vector(-12.5, 0, -25)];
+    willAttackPlayers = WorkshopSettingToggle("Bots", "Attack players (shoot sleep dart, chase, and yeet)", true, 0);
+    willEscape = WorkshopSettingToggle("Bots", "Bots will attempt to escape", true, 0);
+    willJump = WorkshopSettingToggle("Bots", "Bots will jump", true, 0);
+    willRoam = WorkshopSettingToggle("Bots", "Bots will roam around the map", true, 0);
+    willUlt = WorkshopSettingToggle("Bots", "Bots will use ultimate", true, 0);
+    if (spawnAI == true)
+    {
+        CreateHudText(AllPlayers(Team.All), null, null, <"<0> <1>", stringAnaBotSpawn, CountOf(FilteredArray(AllPlayers(Team.All), IsDummyBot(ArrayElement())))>, Location.Left, 1, null, null, Color.White, HudTextRev.VisibleToAndString, Spectators.DefaultVisibility);
+    }
+}
+
+//When a dummy bot is created, these actions take place.
+rule: "AI-specific Event Player Setup"
+Event.OngoingPlayer
+if (IsDummyBot(EventPlayer()))
+{
+    StartForcingDummyBotName(EventPlayer(), RandomValueInArray(botNames));
+}
+
+//This rule is ran whenever the total number of players is less than the AI allowed limit. This will keep spawning AI until all the allowed slots are filled.
+rule: "Spawn AI"
+if (spawnAI == true)
+if (NumberOfPlayers(Team.All) < aiNumber)
+{
+    Wait(1, WaitBehavior.AbortWhenFalse);
+    CreateDummyBot(Hero.Ana, Team.All, -1, NearestWalkablePosition(Vector(RandomReal(-20, 20), 0, RandomReal(-20, 20))), Vector(0, 0, 0));
+    LastCreatedEntity().aimInaccuracy = Vector(RandomReal(-1 * aimInaccuracyExtremes, aimInaccuracyExtremes), 0, RandomReal(-1 * aimInaccuracyExtremes, aimInaccuracyExtremes));
+    LoopIfConditionIsTrue();
+}
+
+//Sets up AI players during the Assembling Heroes phase.
+rule: "Assembling Heroes AI Setup"
+if (IsAssemblingHeroes())
+{
+    AllPlayers(Team.All).targetedPlayer = null;
+    AllPlayers(Team.All).isChasing = false;
+}
+
+//If the player count exceeds the AI limit and AI still exist, they are deleted until the limit matches with the total player count.
+rule: "Delete AI"
+if (spawnAI == true)
+if (NumberOfPlayers(Team.All) > aiNumber)
+if (CountOf(FilteredArray(AllPlayers(Team.All), IsDummyBot(ArrayElement()))) > 0)
+{
+    Wait(1, WaitBehavior.AbortWhenFalse);
+    DestroyDummyBot(Team.All, SlotOf(RandomValueInArray(FilteredArray(AllPlayers(Team.All), IsDummyBot(ArrayElement())))));
+    Wait(1, WaitBehavior.AbortWhenFalse);
+    LoopIfConditionIsTrue();
+}
+
+//Resets player target when the AI respawns.
+rule: "Reset Player Target on Spawn"
+Event.OngoingPlayer
+if (spawnAI == true)
+if (IsDummyBot(EventPlayer()) == true)
+if (IsAlive(EventPlayer()) == true)
+if (HasSpawned(EventPlayer()) == true)
+{
+    targetRoam();
+}
+
+//Subroutine that sets up the player target, the AI facing direction, and the aimInaccuracy.
+void targetRoam() "Target Roam Subroutine"
+{
+    targetedPlayer = FirstOf(SortedArray(FilteredArray(AllLivingPlayers(Team.All), Not(HasStatus(ArrayElement(), Status.Asleep)) && EventPlayer() != ArrayElement()), DistanceBetween(EventPlayer(), ArrayElement())));
+    StartFacing(EventPlayer(), DirectionTowards(EventPlayer(), targetedPlayer + VelocityOf(targetedPlayer) * SquareRoot(DistanceBetween(EventPlayer(), targetedPlayer) ^ 2 / (3600 - SpeedOf(targetedPlayer) ^ 2)) + aimInaccuracy), 800, Relative.ToWorld, FacingRev.DirectionAndTurnRate);
+    aimInaccuracy = Vector(RandomReal(-1 * aimInaccuracyExtremes, aimInaccuracyExtremes), 0, RandomReal(-1 * aimInaccuracyExtremes, aimInaccuracyExtremes));
+}
+
+//The roam state. This will loop until the AI changes states.
+rule: "Roam"
+Event.OngoingPlayer
+if (spawnAI == true)
+if (IsDummyBot(EventPlayer()) == true)
+if (isChasing == false)
+if (HasStatus(EventPlayer(), Status.Asleep) == false)
+{
+    if (willRoam == true)
+    {
+        StartThrottleInDirection(EventPlayer(), Vector(RandomReal(-1, 1), 0, RandomReal(-1, 1)), 1, Relative.ToWorld, ThrottleBehavior.ReplaceExistingThrottle, ThrottleRev.DirectionAndMagnitude);
+    }
+    else
+    {
+        StopThrottleInDirection(EventPlayer());
+    }
+    if (RandomInteger(0, 5) <= 3 && willJump == true)
+    {
+        StartHoldingButton(EventPlayer(), Button.Jump);
+        MinWait();
+        StopHoldingButton(EventPlayer(), Button.Jump);
+    }
+    Wait(0.7, WaitBehavior.AbortWhenFalse);
+    LoopIfConditionIsTrue();
+}
+
+//While in roam state, the player target may change every 5 seconds.
+rule: "Target Player while Roaming"
+Event.OngoingPlayer
+if (spawnAI == true)
+if (IsDummyBot(EventPlayer()) == true)
+if (isChasing == false)
+if (HasStatus(EventPlayer(), Status.Asleep) == false)
+if (playersCarried == [])
+{
+    targetRoam();
+    Wait(5, WaitBehavior.AbortWhenFalse);
+    Loop();
+}
+
+//When allowed to, the AI has a chance of shooting a sleep dart.
+rule: "Shoot sleep"
+Event.OngoingPlayer
+if (spawnAI == true)
+if (IsDummyBot(EventPlayer()) == true)
+if (isChasing == false)
+if (AbilityCooldown(EventPlayer(), Button.Ability1) == 0)
+if (HasStatus(EventPlayer(), Status.Asleep) == false)
+if (willAttackPlayers == true)
+{
+    if (RandomInteger(0, 1) == 1)
+    {
+        StartHoldingButton(EventPlayer(), Button.Ability1);
+        MinWait();
+        StopHoldingButton(EventPlayer(), Button.Ability1);
+    }
+    Wait(1, WaitBehavior.IgnoreCondition);
+    LoopIfConditionIsTrue();
+}
+
+//When the target is slept, enter chase state. Now the player is the targeted position.
+rule: "Target Sleeping Player"
+Event.OngoingPlayer
+if (spawnAI == true)
+if (IsDummyBot(EventPlayer()) == true)
+if (HasStatus(targetedPlayer, Status.Asleep) == true)
+if (playersCarried == [])
+if (willAttackPlayers == true)
+{
+    isChasing = true;
+    StartThrottleInDirection(EventPlayer(), DirectionTowards(EventPlayer(), targetedPlayer), 1, Relative.ToWorld, ThrottleBehavior.ReplaceExistingThrottle, ThrottleRev.DirectionAndMagnitude);
+    Communicate(EventPlayer(), Communication.Hello);
+}
+
+//If the Ai reaches the edge with a player, throw them.
+rule: "Launch Player"
+Event.OngoingPlayer
+if (spawnAI == true)
+if (IsDummyBot(EventPlayer()) == true)
+if (isChasing == true)
+if ((XOf(PositionOf(EventPlayer())) >= 17 - throwStrength * 0.4 / 10 || XOf(PositionOf(EventPlayer())) <= -17 + throwStrength * 0.4 / 10 || ZOf(PositionOf(EventPlayer())) >= 17 - throwStrength * 0.4 / 10 || ZOf(PositionOf(EventPlayer())) <= -17 + throwStrength * 0.4 / 10) == true)
+if (CountOf(playersCarried) > 0)
+if (willAttackPlayers == true)
+{
+    StartHoldingButton(EventPlayer(), Button.Jump);
+    Wait(0.5);
+    StartHoldingButton(EventPlayer(), Button.SecondaryFire);    
+    MinWait();
+    StopHoldingButton(EventPlayer(), Button.SecondaryFire);
+    StartHoldingButton(EventPlayer(), Button.Jump);
+    Communicate(EventPlayer(), Communication.Goodbye);
+}
+
+//When the AI is at the targeted player while in Chast state, it will pick up the player and proceed to find an edge.
+rule: "Pick Up Player"
+Event.OngoingPlayer
+if (spawnAI == true)
+if (IsDummyBot(EventPlayer()) == true)
+if (isChasing == true)
+if (CountOf(FilteredArray(AllLivingPlayers(Team.All), DistanceBetween(ArrayElement(), EventPlayer()) <= pickupRadius - pickupRadius * 0.333 && HasStatus(ArrayElement(), Status.Asleep))) > 0)
+if (playersCarried == [])
+if (willAttackPlayers == true)
+{
+    StopForcingThrottle(EventPlayer());
+    if (RandomReal(0, 1) > 0.8) //Has a less than 20% chance to teabag the player.
+    {
+        Wait(0.25, WaitBehavior.IgnoreCondition);
+        StopThrottleInDirection(EventPlayer());
+        StartHoldingButton(EventPlayer(), Button.Crouch);
+        Wait(0.1, WaitBehavior.IgnoreCondition);
+        StopHoldingButton(EventPlayer(), Button.Crouch);
+        Wait(0.15, WaitBehavior.IgnoreCondition);
+        StartHoldingButton(EventPlayer(), Button.Crouch);
+        Wait(0.1, WaitBehavior.IgnoreCondition);
+        StopHoldingButton(EventPlayer(), Button.Crouch);
+        Wait(0.1, WaitBehavior.IgnoreCondition);
+    }
+    StartHoldingButton(EventPlayer(), Button.PrimaryFire);
+    MinWait();
+    StopHoldingButton(EventPlayer(), Button.PrimaryFire);
+    Wait(0.25, WaitBehavior.IgnoreCondition);
+    LoopIfConditionIsTrue();
+}
+
+//When the AI picked up their targeted player, they target the closest edge position.
+rule: "Move to Edge With Player"
+Event.OngoingPlayer
+if (spawnAI == true)
+if (IsDummyBot(EventPlayer()) == true)
+if (isChasing == true)
+if (CountOf(playersCarried) > 0)
+if (willAttackPlayers == true)
+{
+    StartThrottleInDirection(EventPlayer(), DirectionTowards(EventPlayer(), FirstOf(SortedArray(positionArray, DistanceBetween(EventPlayer(), ArrayElement())))), 1, Relative.ToWorld, ThrottleBehavior.ReplaceExistingThrottle, ThrottleRev.DirectionAndMagnitude);
+    targetedPlayer = FirstOf(SortedArray(positionArray, DistanceBetween(EventPlayer(), ArrayElement())));
+    Wait(3, WaitBehavior.IgnoreCondition);
+    LoopIfConditionIsTrue();
+}
+
+//When the AI dies, AI-specific variables are reset.
+rule: "Death Reset"
+Event.OnDeath
+if (spawnAI == true)
+if (IsDummyBot(EventPlayer()) == true)
+{
+    targetedPlayer = null;
+    isChasing = false;
+    StopForcingThrottle(EventPlayer());
+}
+
+//If the AI is slept, their current state is reset.
+rule: "Sleep Reset"
+Event.OngoingPlayer
+if (spawnAI == true)
+if (IsDummyBot(EventPlayer()) == true)
+if (HasStatus(EventPlayer(), Status.Asleep) == true)
+{
+    StopFacing(EventPlayer());
+    targetedPlayer = null;
+    isChasing = false;
+    StopForcingThrottle(EventPlayer());
+}
+
+//If the AI wakes up, it will attempt to escape as if they have autoEscape() enabled (with some slight differences).
+rule: "Escape"
+Event.OngoingPlayer
+if (spawnAI == true)
+if (IsDummyBot(EventPlayer()) == true)
+if (thrower != null)
+if (HasStatus(EventPlayer(), Status.Asleep) == false)
+if (willEscape == true)
+{
+    autoEscape();
+    Wait(0.25, WaitBehavior.IgnoreCondition);
+    LoopIfConditionIsTrue();
+}
+
+//If the AI gets ult, it will attempt to use it when alive.
+rule: "Ultimate usage"
+Event.OngoingPlayer
+if (spawnAI == true)
+if (IsDummyBot(EventPlayer()) == true)
+if (UltimateChargePercent(EventPlayer()) == 100)
+if (IsAlive(EventPlayer()) == true)
+if (HasSpawned(EventPlayer()) == true)
+if (willUlt == true)
+{
+    StartHoldingButton(EventPlayer(), Button.Ultimate);
+    MinWait();
+    StopHoldingButton(EventPlayer(), Button.Ultimate);
+}
+
+//If the AI gets too close to the edge, regardless of state, will switch to chase state and target the center of the map. Enters roam state when they are a safe distance from edge.
+rule: "Retreat from map edge"
+Event.OngoingPlayer
+if (spawnAI == true)
+if (IsDummyBot(EventPlayer()) == true)
+if ((XOf(PositionOf(EventPlayer())) + 2 >= 21 || XOf(PositionOf(EventPlayer())) - 2 <= -21 || ZOf(PositionOf(EventPlayer())) + 2 >= 21 || ZOf(PositionOf(EventPlayer())) - 2 <= -21) == true)
+{
+    StartThrottleInDirection(EventPlayer(), DirectionTowards(EventPlayer(), Vector(0, 0, 0)), 1, Relative.ToWorld, ThrottleBehavior.ReplaceExistingThrottle, ThrottleRev.DirectionAndMagnitude);
+    isChasing = true;
+    Wait(0.7, WaitBehavior.IgnoreCondition);
+    LoopIfConditionIsTrue();
+    isChasing = false;
+}
+
+//Once they rid of playersCarried (or they escape), they reset to the roam state.
+rule: "Stop Chasing After Removing Carried Players"
+Event.OngoingPlayer
+if (spawnAI == true)
+if (IsDummyBot(EventPlayer()) == true)
+if (playersCarried == [])
+{
+    isChasing = false;
+}
+
+//If the target is bound to die, they reset to roam state sooner.
+rule: "Stop Staring at Dead Target"
+Event.OngoingPlayer
+if (spawnAI == true)
+if (IsDummyBot(EventPlayer()) == true)
+if (YOf(targetedPlayer) <= -1)
+if (EntityExists(targetedPlayer) == true)
+if (isChasing == true)
+{
+    isChasing = false;
+}
+
+//If the player they were targeting is now being carried or is awakening (not by them), they reset to roam state.
+rule: "Stop targeting carried or awakening player"
+Event.OngoingPlayer
+if (spawnAI == true)
+if (IsDummyBot(EventPlayer()) == true)
+if ((targetedPlayer.thrower != null) || HasStatus(targetedPlayer, Status.Asleep) == false)
+if (EntityExists(targetedPlayer) == true)
+{
+    isChasing = false;
+}
+
+//While on their way to the edge, they will pick up sleeping players in its path.
+rule: "Pick up players while going to edge"
+Event.OngoingPlayer
+if (spawnAI == true)
+if (IsDummyBot(EventPlayer()) == true)
+if (isChasing == true)
+if (CountOf(FilteredArray(AllLivingPlayers(Team.All), DistanceBetween(ArrayElement(), EventPlayer()) <= pickupRadius - pickupRadius * 0.333 && HasStatus(ArrayElement(), Status.Asleep) && ArrayElement().thrower == null)) > 0)
+if (EntityExists(targetedPlayer) == false)
+if (willAttackPlayers == true)
+{
+    StartHoldingButton(EventPlayer(), Button.PrimaryFire);
+    MinWait();
+    StopHoldingButton(EventPlayer(), Button.PrimaryFire);
+}
